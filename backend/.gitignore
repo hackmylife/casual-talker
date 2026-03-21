@@ -1,0 +1,14 @@
+# Binaries
+casual-talker
+*.exe
+
+# Environment
+.env
+config.env
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
