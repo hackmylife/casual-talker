@@ -1,0 +1,9 @@
+[     235ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/users/me:0
+[     236ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/users/me:0
+[ 1634759ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/courses:0
+[ 1634761ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/courses:0
+[ 1634770ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/auth/refresh:0
+[ 1634856ms] ApiError: API Error: 401
+    at apiFetch (http://localhost:5173/src/lib/api-client.ts?t=1774077649237:34:9)
+    at async load (http://localhost:5173/src/routes/Home.tsx?t=1774077649237:23:28)
+[ 2537253ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:5173/api/v1/users/me:0

@@ -1,0 +1,2 @@
+[  108090ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://localhost:5173/api/v1/chat/stream:0
+[  127798ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://localhost:5173/api/v1/chat/stream:0
