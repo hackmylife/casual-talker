@@ -263,7 +263,7 @@ export default function Feedback() {
         {(naturalExpressions.length > 0 || rawNaturalStrings.length > 0) && (
           <section>
             <h2 className="text-lg font-semibold text-neutral-900 mb-3">
-              💡 こう言うともっと自然
+              💡 ネイティブならこう言う
             </h2>
             <div className="space-y-3">
               {naturalExpressions.length > 0

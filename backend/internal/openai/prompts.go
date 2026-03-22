@@ -340,7 +340,7 @@ func BuildFeedbackPrompt(turns []domain.Turn, targetLang string) string {
 Provide feedback in the following JSON format:
 {
   "achievements": ["string array of things the student did well, in Japanese"],
-  "natural_expressions": [{"original": "COPY the student's EXACT words here (%s only, NOT Japanese)", "natural": "rewrite it more naturally (%s only, NOT Japanese)"}],
+  "natural_expressions": [{"original": "COPY the student's EXACT words here (%s only, NOT Japanese)", "natural": "how a native speaker would say the same thing (%s only, NOT Japanese)"}],
   "improvements": [{"point": "improvement point in Japanese", "example": "a correct example sentence in %s (NOT Japanese)"}],
   "review_phrases": ["up to 3 key phrases the student should practice (in the target language)"],
   "current_level": {
@@ -353,7 +353,10 @@ Provide feedback in the following JSON format:
 
 Rules:
 - achievements: at least 1, written in Japanese, encouraging tone
-- natural_expressions: CRITICAL LANGUAGE RULE — Both "original" and "natural" MUST be in %s. NEVER write Japanese in these fields. "original" = copy the student's exact words from the conversation. "natural" = rewrite it more naturally in %s. Only include when wording/grammar is meaningfully different (not just punctuation). Return [] if already natural.
+- natural_expressions: CRITICAL LANGUAGE RULE — Both "original" and "natural" MUST be in %s. NEVER write Japanese in these fields.
+  "original" = copy the student's exact words from the conversation.
+  "natural" = how a NATIVE SPEAKER would express the same idea in %s. Do NOT just fix grammar — show a completely natural, idiomatic way a native would phrase it. The goal is to teach natural expression patterns, not just correct mistakes.
+  Only include when the native version would be meaningfully different. Return [] if the student already sounds natural.
 - improvements: max 2 items. "point" is in Japanese. "example" MUST be in %s (NEVER Japanese). Be gentle, no negative language.
 - review_phrases: max 3, target-language phrases for review
 - current_level: assess the student's speaking level based on their responses:
