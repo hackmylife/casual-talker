@@ -150,7 +150,7 @@ func generateFeedback(
 type llmFeedbackPayload struct {
 	Achievements       []string               `json:"achievements"`
 	NaturalExpressions []naturalExpressionItem `json:"natural_expressions"`
-	Improvements       []string               `json:"improvements"`
+	Improvements       json.RawMessage        `json:"improvements"` // can be []string or []{point,example}
 	ReviewPhrases      []string               `json:"review_phrases"`
 	CurrentLevel       *levelInfo             `json:"current_level"`
 	NextLevelAdvice    string                 `json:"next_level_advice"`
@@ -196,13 +196,19 @@ func buildFeedbackFromRaw(sessionID, raw string) *domain.Feedback {
 	// Re-marshal each field individually so we store compact, canonical JSON.
 	achievements, _ := json.Marshal(payload.Achievements)
 	naturalExpressions, _ := json.Marshal(payload.NaturalExpressions)
-	improvements, _ := json.Marshal(payload.Improvements)
 	reviewPhrases, _ := json.Marshal(payload.ReviewPhrases)
 
 	fb.Achievements = achievements
 	fb.NaturalExpressions = naturalExpressions
-	fb.Improvements = improvements
 	fb.ReviewPhrases = reviewPhrases
+
+	// Improvements can be either []string (legacy) or []{point,example} (new).
+	// Store the raw JSON as-is since both formats are valid.
+	if len(payload.Improvements) > 0 {
+		fb.Improvements = payload.Improvements
+	} else {
+		fb.Improvements = json.RawMessage("[]")
+	}
 
 	// current_level: marshal the level object if present; fall back to empty object.
 	if payload.CurrentLevel != nil {
