@@ -342,6 +342,7 @@ Provide feedback in the following JSON format:
   "achievements": ["string array of things the student did well, in Japanese"],
   "natural_expressions": [{"original": "COPY the student's EXACT words here (%s only, NOT Japanese)", "natural": "how a native speaker would say the same thing (%s only, NOT Japanese)"}],
   "improvements": [{"point": "improvement point in Japanese", "example": "a correct example sentence in %s (NOT Japanese)"}],
+  "conversation_tips": [{"situation": "describe in Japanese when in the conversation this tip applies", "native_would_say": "what a native speaker would say in this situation (in %s, NOT Japanese)", "explanation": "brief Japanese explanation of why natives say this"}],
   "review_phrases": ["up to 3 key phrases the student should practice (in the target language)"],
   "current_level": {
     "level": <number 1-5>,
@@ -358,6 +359,7 @@ Rules:
   "natural" = how a NATIVE SPEAKER would express the same idea in %s. Do NOT just fix grammar — show a completely natural, idiomatic way a native would phrase it. The goal is to teach natural expression patterns, not just correct mistakes.
   Only include when the native version would be meaningfully different. Return [] if the student already sounds natural.
 - improvements: max 2 items. "point" is in Japanese. "example" MUST be in %s (NEVER Japanese). Be gentle, no negative language.
+- conversation_tips: 2-3 tips showing what a native speaker would say in specific moments of THIS conversation. Look at the whole conversation flow and find moments where a native would respond differently — not just grammar, but conversation style, reactions, follow-up questions, humor, filler words, etc. "situation" is in Japanese, "native_would_say" MUST be in %s (NEVER Japanese), "explanation" is in Japanese.
 - review_phrases: max 3, target-language phrases for review
 - current_level: assess the student's speaking level based on their responses:
     Level 1 (%s): Can only say single words or yes/no answers
@@ -374,8 +376,10 @@ Conversation:
 		cfg.feedbackConversationLabel,
 		cfg.interpretOutputLang, cfg.interpretOutputLang, // JSON template: natural_expressions original, natural
 		cfg.interpretOutputLang,                          // JSON template: improvements example
+		cfg.interpretOutputLang,                          // JSON template: conversation_tips native_would_say
 		cfg.interpretOutputLang, cfg.interpretOutputLang, // Rules: natural_expressions (2 mentions)
 		cfg.interpretOutputLang,                          // Rules: improvements example
+		cfg.interpretOutputLang,                          // Rules: conversation_tips native_would_say
 		labels[0], labels[1], labels[2], labels[3], labels[4],
 		conversation.String(),
 	)

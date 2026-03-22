@@ -279,12 +279,12 @@ func (r *PgxSessionRepository) CreateFeedback(ctx context.Context, fb *domain.Fe
 	const q = `
 		INSERT INTO feedbacks (
 			session_id, achievements, natural_expressions,
-			improvements, review_phrases,
+			improvements, conversation_tips, review_phrases,
 			current_level, next_level_advice,
 			raw_llm_response
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, session_id, achievements, natural_expressions,
-		          improvements, review_phrases,
+		          improvements, conversation_tips, review_phrases,
 		          current_level, next_level_advice,
 		          raw_llm_response, created_at`
 
@@ -293,6 +293,7 @@ func (r *PgxSessionRepository) CreateFeedback(ctx context.Context, fb *domain.Fe
 		fb.Achievements,
 		fb.NaturalExpressions,
 		fb.Improvements,
+		fb.ConversationTips,
 		fb.ReviewPhrases,
 		fb.CurrentLevel,
 		fb.NextLevelAdvice,
@@ -306,7 +307,7 @@ func (r *PgxSessionRepository) CreateFeedback(ctx context.Context, fb *domain.Fe
 func (r *PgxSessionRepository) GetFeedbackBySession(ctx context.Context, sessionID string) (*domain.Feedback, error) {
 	const q = `
 		SELECT id, session_id, achievements, natural_expressions,
-		       improvements, review_phrases,
+		       improvements, conversation_tips, review_phrases,
 		       current_level, next_level_advice,
 		       raw_llm_response, created_at
 		FROM feedbacks
@@ -492,7 +493,7 @@ func scanFeedback(row pgxRow) (*domain.Feedback, error) {
 	err := row.Scan(
 		&fb.ID, &fb.SessionID,
 		&fb.Achievements, &fb.NaturalExpressions,
-		&fb.Improvements, &fb.ReviewPhrases,
+		&fb.Improvements, &fb.ConversationTips, &fb.ReviewPhrases,
 		&fb.CurrentLevel, &fb.NextLevelAdvice,
 		&fb.RawLLMResponse, &fb.CreatedAt,
 	)

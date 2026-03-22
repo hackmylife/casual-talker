@@ -91,6 +91,7 @@ type Feedback struct {
 	Achievements       json.RawMessage
 	NaturalExpressions json.RawMessage
 	Improvements       json.RawMessage
+	ConversationTips   json.RawMessage
 	ReviewPhrases      json.RawMessage
 	CurrentLevel       json.RawMessage
 	NextLevelAdvice    *string

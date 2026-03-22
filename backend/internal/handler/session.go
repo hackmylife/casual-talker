@@ -123,6 +123,7 @@ type feedbackResponse struct {
 	Achievements       domain.RawJSON `json:"achievements"`
 	NaturalExpressions domain.RawJSON `json:"natural_expressions"`
 	Improvements       domain.RawJSON `json:"improvements"`
+	ConversationTips   domain.RawJSON `json:"conversation_tips"`
 	ReviewPhrases      domain.RawJSON `json:"review_phrases"`
 	CurrentLevel       domain.RawJSON `json:"current_level"`
 	NextLevelAdvice    *string        `json:"next_level_advice"`
@@ -199,6 +200,7 @@ func toFeedbackResponse(fb domain.Feedback) feedbackResponse {
 		Achievements:       domain.RawJSON(fb.Achievements),
 		NaturalExpressions: domain.RawJSON(fb.NaturalExpressions),
 		Improvements:       domain.RawJSON(fb.Improvements),
+		ConversationTips:   domain.RawJSON(fb.ConversationTips),
 		ReviewPhrases:      domain.RawJSON(fb.ReviewPhrases),
 		CurrentLevel:       domain.RawJSON(fb.CurrentLevel),
 		NextLevelAdvice:    fb.NextLevelAdvice,

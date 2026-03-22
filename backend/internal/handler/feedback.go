@@ -150,7 +150,8 @@ func generateFeedback(
 type llmFeedbackPayload struct {
 	Achievements       []string               `json:"achievements"`
 	NaturalExpressions []naturalExpressionItem `json:"natural_expressions"`
-	Improvements       json.RawMessage        `json:"improvements"` // can be []string or []{point,example}
+	Improvements       json.RawMessage        `json:"improvements"`        // can be []string or []{point,example}
+	ConversationTips   json.RawMessage        `json:"conversation_tips"`   // [{situation,native_would_say,explanation}]
 	ReviewPhrases      []string               `json:"review_phrases"`
 	CurrentLevel       *levelInfo             `json:"current_level"`
 	NextLevelAdvice    string                 `json:"next_level_advice"`
@@ -188,6 +189,7 @@ func buildFeedbackFromRaw(sessionID, raw string) *domain.Feedback {
 		fb.Achievements = json.RawMessage("[]")
 		fb.NaturalExpressions = json.RawMessage("[]")
 		fb.Improvements = json.RawMessage("[]")
+		fb.ConversationTips = json.RawMessage("[]")
 		fb.ReviewPhrases = json.RawMessage("[]")
 		fb.CurrentLevel = json.RawMessage("{}")
 		return fb
@@ -203,11 +205,17 @@ func buildFeedbackFromRaw(sessionID, raw string) *domain.Feedback {
 	fb.ReviewPhrases = reviewPhrases
 
 	// Improvements can be either []string (legacy) or []{point,example} (new).
-	// Store the raw JSON as-is since both formats are valid.
 	if len(payload.Improvements) > 0 {
 		fb.Improvements = payload.Improvements
 	} else {
 		fb.Improvements = json.RawMessage("[]")
+	}
+
+	// Conversation tips: store raw JSON as-is.
+	if len(payload.ConversationTips) > 0 {
+		fb.ConversationTips = payload.ConversationTips
+	} else {
+		fb.ConversationTips = json.RawMessage("[]")
 	}
 
 	// current_level: marshal the level object if present; fall back to empty object.

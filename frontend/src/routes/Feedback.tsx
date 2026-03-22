@@ -17,12 +17,19 @@ interface CurrentLevel {
   description: string
 }
 
+interface ConversationTip {
+  situation: string
+  native_would_say: string
+  explanation: string
+}
+
 interface FeedbackData {
   id: string
   session_id: string
   achievements: string[]
   natural_expressions: NaturalExpression[] | string[]
   improvements: (string | { point: string; example: string })[]
+  conversation_tips?: ConversationTip[]
   review_phrases: string[]
   current_level?: CurrentLevel
   next_level_advice?: string
@@ -347,6 +354,26 @@ export default function Feedback() {
                 )
               })}
             </ul>
+          </section>
+        )}
+
+        {/* Conversation tips section */}
+        {feedback.conversation_tips && feedback.conversation_tips.length > 0 && (
+          <section className="bg-white rounded-2xl p-4 shadow-sm">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-3">
+              💬 ネイティブの会話ヒント
+            </h2>
+            <div className="space-y-3">
+              {feedback.conversation_tips.map((tip, index) => (
+                <div key={index} className="border border-neutral-100 rounded-xl p-3">
+                  <p className="text-xs text-neutral-500 mb-1">{tip.situation}</p>
+                  <p className="text-sm font-medium text-primary-700 bg-primary-50 rounded-lg px-3 py-2 mb-1">
+                    &ldquo;{tip.native_would_say}&rdquo;
+                  </p>
+                  <p className="text-xs text-neutral-600">{tip.explanation}</p>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 
