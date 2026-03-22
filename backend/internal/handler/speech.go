@@ -24,8 +24,12 @@ func NewSpeechHandler(client *oai.Client) *SpeechHandler {
 }
 
 // STT handles POST /api/v1/speech/stt.
-// It accepts a multipart/form-data request with an "audio" field containing
-// the audio file, forwards it to OpenAI Whisper, and returns the transcript.
+// It accepts a multipart/form-data request with:
+//   - "audio": the audio file (required)
+//   - "language": BCP-47 language code hint for Whisper (optional, e.g. "en", "it", "ko", "pt")
+//
+// When a language hint is provided Whisper skips auto-detection and uses it
+// directly, which improves accuracy for non-English languages.
 func (h *SpeechHandler) STT(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(maxAudioUploadBytes); err != nil {
 		writeError(w, http.StatusBadRequest, "failed to parse multipart form")
@@ -39,6 +43,16 @@ func (h *SpeechHandler) STT(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	// Read the optional language hint. Only accept known codes; ignore anything
+	// else to avoid passing untrusted strings to the upstream API.
+	langHint := ""
+	if lang := r.FormValue("language"); lang != "" {
+		switch lang {
+		case "en", "it", "ko", "pt":
+			langHint = lang
+		}
+	}
+
 	// Use a fixed filename to prevent the client from influencing the format
 	// detection via a crafted filename.
 	_ = header // filename from client is intentionally ignored
@@ -46,6 +60,7 @@ func (h *SpeechHandler) STT(w http.ResponseWriter, r *http.Request) {
 		Model:    openailib.Whisper1,
 		Reader:   file,
 		FilePath: "audio.webm",
+		Language: langHint,
 	}
 
 	resp, err := h.openai.Underlying().CreateTranscription(r.Context(), req)

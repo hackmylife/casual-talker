@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,6 +16,7 @@ import (
 type SessionRepository interface {
 	// Courses & Themes
 	ListCourses(ctx context.Context) ([]domain.Course, error)
+	GetCourse(ctx context.Context, id string) (*domain.Course, error)
 	ListThemesByCourse(ctx context.Context, courseID string) ([]domain.Theme, error)
 	GetTheme(ctx context.Context, id string) (*domain.Theme, error)
 
@@ -31,6 +33,11 @@ type SessionRepository interface {
 	// Feedback
 	CreateFeedback(ctx context.Context, fb *domain.Feedback) (*domain.Feedback, error)
 	GetFeedbackBySession(ctx context.Context, sessionID string) (*domain.Feedback, error)
+
+	// Stats
+	GetUserStats(ctx context.Context, userID string) (*domain.UserStats, error)
+	GetUserLanguageStats(ctx context.Context, userID string) ([]domain.LanguageStat, error)
+	GetUserSessionDates(ctx context.Context, userID string) ([]time.Time, error)
 }
 
 // PgxSessionRepository is a pgx-backed implementation of SessionRepository.
@@ -49,7 +56,7 @@ func NewPgxSessionRepository(pool *pgxpool.Pool) *PgxSessionRepository {
 // ListCourses returns all courses ordered by sort_order ascending.
 func (r *PgxSessionRepository) ListCourses(ctx context.Context) ([]domain.Course, error) {
 	const q = `
-		SELECT id, title, description, sort_order, created_at
+		SELECT id, title, description, target_language, sort_order, created_at
 		FROM courses
 		ORDER BY sort_order ASC`
 
@@ -61,13 +68,32 @@ func (r *PgxSessionRepository) ListCourses(ctx context.Context) ([]domain.Course
 
 	var courses []domain.Course
 	for rows.Next() {
-		var c domain.Course
-		if err := rows.Scan(&c.ID, &c.Title, &c.Description, &c.SortOrder, &c.CreatedAt); err != nil {
+		c, err := scanCourse(rows)
+		if err != nil {
 			return nil, err
 		}
-		courses = append(courses, c)
+		courses = append(courses, *c)
 	}
 	return courses, rows.Err()
+}
+
+// GetCourse retrieves a single course by its UUID.
+// Returns ErrNotFound if no course exists with that ID.
+func (r *PgxSessionRepository) GetCourse(ctx context.Context, id string) (*domain.Course, error) {
+	const q = `
+		SELECT id, title, description, target_language, sort_order, created_at
+		FROM courses
+		WHERE id = $1`
+
+	row := r.pool.QueryRow(ctx, q, id)
+	c, err := scanCourse(row)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return c, nil
 }
 
 // ListThemesByCourse returns all themes for a course ordered by sort_order.
@@ -294,12 +320,129 @@ func (r *PgxSessionRepository) GetFeedbackBySession(ctx context.Context, session
 	return fb, nil
 }
 
+// --- Stats ---
+
+// GetUserStats aggregates total_sessions, total_practice_minutes,
+// total_user_turns, and pronunciation_fixes for a user from the sessions and
+// turns tables. No additional tables are required.
+func (r *PgxSessionRepository) GetUserStats(ctx context.Context, userID string) (*domain.UserStats, error) {
+	const q = `
+		SELECT
+			(SELECT COUNT(*)
+			 FROM sessions
+			 WHERE user_id = $1 AND status = 'completed') AS total_sessions,
+
+			(SELECT COALESCE(
+				SUM(EXTRACT(EPOCH FROM (ended_at - started_at)) / 60),
+				0
+			)
+			 FROM sessions
+			 WHERE user_id = $1 AND status = 'completed' AND ended_at IS NOT NULL)
+			AS total_practice_minutes,
+
+			(SELECT COUNT(*)
+			 FROM turns t
+			 JOIN sessions s ON t.session_id = s.id
+			 WHERE s.user_id = $1 AND t.user_text IS NOT NULL AND t.user_text != '')
+			AS total_user_turns,
+
+			(SELECT COUNT(*)
+			 FROM turns t
+			 JOIN sessions s ON t.session_id = s.id
+			 WHERE s.user_id = $1
+			   AND t.interpreted_text IS NOT NULL
+			   AND t.interpreted_text != t.user_text)
+			AS pronunciation_fixes`
+
+	var stats domain.UserStats
+	var practiceMinutesF float64
+	err := r.pool.QueryRow(ctx, q, userID).Scan(
+		&stats.TotalSessions,
+		&practiceMinutesF,
+		&stats.TotalUserTurns,
+		&stats.PronunciationFixes,
+	)
+	if err != nil {
+		return nil, err
+	}
+	stats.TotalPracticeMinutes = int(practiceMinutesF)
+	return &stats, nil
+}
+
+// GetUserLanguageStats returns per-language session counts and last practice
+// timestamps for all languages the user has completed sessions in.
+func (r *PgxSessionRepository) GetUserLanguageStats(ctx context.Context, userID string) ([]domain.LanguageStat, error) {
+	const q = `
+		SELECT c.target_language,
+		       COUNT(*)       AS sessions,
+		       MAX(s.ended_at) AS last_practiced
+		FROM sessions s
+		JOIN themes th ON s.theme_id = th.id
+		JOIN courses c  ON th.course_id = c.id
+		WHERE s.user_id = $1 AND s.status = 'completed'
+		GROUP BY c.target_language`
+
+	rows, err := r.pool.Query(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []domain.LanguageStat
+	for rows.Next() {
+		var ls domain.LanguageStat
+		if err := rows.Scan(&ls.Language, &ls.Sessions, &ls.LastPracticed); err != nil {
+			return nil, err
+		}
+		stats = append(stats, ls)
+	}
+	return stats, rows.Err()
+}
+
+// GetUserSessionDates returns the distinct calendar dates (UTC timestamps at
+// midnight of Asia/Tokyo day boundaries) of all completed sessions for a user,
+// ordered newest first. The streak calculation is performed on the handler side
+// using the JST date components extracted in SQL.
+func (r *PgxSessionRepository) GetUserSessionDates(ctx context.Context, userID string) ([]time.Time, error) {
+	const q = `
+		SELECT DISTINCT
+			DATE_TRUNC('day', ended_at AT TIME ZONE 'Asia/Tokyo') AT TIME ZONE 'Asia/Tokyo' AS session_day
+		FROM sessions
+		WHERE user_id = $1 AND status = 'completed' AND ended_at IS NOT NULL
+		ORDER BY session_day DESC`
+
+	rows, err := r.pool.Query(ctx, q, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var dates []time.Time
+	for rows.Next() {
+		var d time.Time
+		if err := rows.Scan(&d); err != nil {
+			return nil, err
+		}
+		dates = append(dates, d)
+	}
+	return dates, rows.Err()
+}
+
 // --- scan helpers ---
 
 // pgxRow is a common interface satisfied by both pgx.Row and pgx.Rows so that
 // the scan helpers can be reused for both QueryRow and Query results.
 type pgxRow interface {
 	Scan(dest ...any) error
+}
+
+func scanCourse(row pgxRow) (*domain.Course, error) {
+	var c domain.Course
+	err := row.Scan(&c.ID, &c.Title, &c.Description, &c.TargetLanguage, &c.SortOrder, &c.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
 }
 
 func scanTheme(row pgxRow) (*domain.Theme, error) {

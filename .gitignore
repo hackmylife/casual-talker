@@ -10,3 +10,6 @@ Thumbs.db
 
 # Screenshots from testing
 screenshot-*.png
+.playwright-mcp/
+backend/server
+backend/casual-talker

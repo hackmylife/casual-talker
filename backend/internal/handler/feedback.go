@@ -105,7 +105,18 @@ func generateFeedback(
 		return nil, err
 	}
 
-	prompt := oai.BuildFeedbackPrompt(turns)
+	// Resolve the target language from the session's theme and course.
+	targetLang := "en"
+	session, err := sessionRepo.GetSession(ctx, sessionID)
+	if err == nil {
+		if theme, err := sessionRepo.GetTheme(ctx, session.ThemeID); err == nil {
+			if course, err := sessionRepo.GetCourse(ctx, theme.CourseID); err == nil {
+				targetLang = course.TargetLanguage
+			}
+		}
+	}
+
+	prompt := oai.BuildFeedbackPrompt(turns, targetLang)
 
 	resp, err := oaiClient.Underlying().CreateChatCompletion(ctx, openailib.ChatCompletionRequest{
 		Model: feedbackModel,

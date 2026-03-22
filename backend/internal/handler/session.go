@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -69,10 +70,11 @@ type completeSessionResponse struct {
 // --- response mappers ---
 
 type courseResponse struct {
-	ID          string  `json:"id"`
-	Title       string  `json:"title"`
-	Description *string `json:"description"`
-	SortOrder   int     `json:"sort_order"`
+	ID             string  `json:"id"`
+	Title          string  `json:"title"`
+	Description    *string `json:"description"`
+	TargetLanguage string  `json:"target_language"`
+	SortOrder      int     `json:"sort_order"`
 }
 
 type themeResponse struct {
@@ -131,10 +133,11 @@ type feedbackResponse struct {
 
 func toCourseResponse(c domain.Course) courseResponse {
 	return courseResponse{
-		ID:          c.ID,
-		Title:       c.Title,
-		Description: c.Description,
-		SortOrder:   c.SortOrder,
+		ID:             c.ID,
+		Title:          c.Title,
+		Description:    c.Description,
+		TargetLanguage: c.TargetLanguage,
+		SortOrder:      c.SortOrder,
 	}
 }
 
@@ -492,6 +495,127 @@ func (h *SessionHandler) GetFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, toFeedbackResponse(*fb))
+}
+
+// statsResponse is the body returned by GET /users/me/stats.
+type statsResponse struct {
+	TotalSessions        int                       `json:"total_sessions"`
+	TotalPracticeMinutes int                       `json:"total_practice_minutes"`
+	TotalUserTurns       int                       `json:"total_user_turns"`
+	CurrentStreak        int                       `json:"current_streak"`
+	PronunciationFixes   int                       `json:"pronunciation_fixes"`
+	Languages            map[string]languageStats  `json:"languages"`
+}
+
+// languageStats holds per-language statistics within statsResponse.
+type languageStats struct {
+	Sessions      int        `json:"sessions"`
+	LastPracticed *time.Time `json:"last_practiced"`
+}
+
+// Stats handles GET /api/v1/users/me/stats.
+// It aggregates practice statistics from the sessions and turns tables without
+// reading or writing any additional tables.
+func (h *SessionHandler) Stats(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	ctx := r.Context()
+
+	// Aggregate base stats (total sessions, minutes, turns, pronunciation fixes).
+	stats, err := h.repo.GetUserStats(ctx, userID)
+	if err != nil {
+		slog.Error("failed to fetch user stats", "user_id", userID, "error", err)
+		writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	// Per-language breakdown.
+	langStats, err := h.repo.GetUserLanguageStats(ctx, userID)
+	if err != nil {
+		slog.Error("failed to fetch user language stats", "user_id", userID, "error", err)
+		writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	// Session dates for streak calculation (JST day boundaries, newest first).
+	sessionDates, err := h.repo.GetUserSessionDates(ctx, userID)
+	if err != nil {
+		slog.Error("failed to fetch user session dates", "user_id", userID, "error", err)
+		writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	streak := calculateStreak(sessionDates)
+
+	// Build the languages map.
+	languages := make(map[string]languageStats, len(langStats))
+	for _, ls := range langStats {
+		languages[ls.Language] = languageStats{
+			Sessions:      ls.Sessions,
+			LastPracticed: ls.LastPracticed,
+		}
+	}
+
+	resp := statsResponse{
+		TotalSessions:        stats.TotalSessions,
+		TotalPracticeMinutes: stats.TotalPracticeMinutes,
+		TotalUserTurns:       stats.TotalUserTurns,
+		CurrentStreak:        streak,
+		PronunciationFixes:   stats.PronunciationFixes,
+		Languages:            languages,
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// calculateStreak computes the number of consecutive days the user practiced,
+// counting back from today (JST). If the user has not yet practiced today the
+// streak is counted from yesterday. Returns 0 when the dates slice is empty.
+func calculateStreak(dates []time.Time) int {
+	if len(dates) == 0 {
+		return 0
+	}
+
+	jst, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		// Fall back to UTC+9 fixed offset when the timezone database is absent.
+		jst = time.FixedZone("JST", 9*60*60)
+	}
+
+	// Normalise today to midnight JST for consistent day-boundary comparison.
+	nowJST := time.Now().In(jst)
+	todayJST := time.Date(nowJST.Year(), nowJST.Month(), nowJST.Day(), 0, 0, 0, 0, jst)
+
+	// Build a set of practice dates (as midnight JST) for O(1) lookup.
+	dateSet := make(map[time.Time]struct{}, len(dates))
+	for _, d := range dates {
+		// Normalise each date to midnight JST to match todayJST.
+		djst := d.In(jst)
+		midnight := time.Date(djst.Year(), djst.Month(), djst.Day(), 0, 0, 0, 0, jst)
+		dateSet[midnight] = struct{}{}
+	}
+
+	// Determine whether to start counting from today or yesterday.
+	cursor := todayJST
+	if _, practicedToday := dateSet[cursor]; !practicedToday {
+		cursor = cursor.AddDate(0, 0, -1)
+	}
+
+	// Walk backwards day-by-day until a gap is found.
+	streak := 0
+	for {
+		if _, ok := dateSet[cursor]; !ok {
+			break
+		}
+		streak++
+		cursor = cursor.AddDate(0, 0, -1)
+	}
+
+	return streak
 }
 
 // --- helpers ---

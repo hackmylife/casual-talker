@@ -94,6 +94,7 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(authMiddleware)
 			r.Get("/users/me", authHandler.Me)
+			r.Get("/users/me/stats", sessionHandler.Stats)
 
 			// Courses & themes
 			r.Get("/courses", sessionHandler.ListCourses)

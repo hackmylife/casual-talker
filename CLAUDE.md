@@ -31,7 +31,12 @@ English conversation training web app for Japanese beginners. AI-powered speakin
 - JWT validation enforces `type` claim ("access" / "refresh") to prevent token confusion
 
 ### Conversation
-- Theme selection (8 themes, daily conversation course)
+- Theme selection (8 themes per language × 4 languages = 32 themes total)
+- Multi-language support: English (en), Italian (it), Korean (ko), Portuguese (pt)
+  - Language tab UI on home screen (🇬🇧🇮🇹🇰🇷🇧🇷)
+  - System prompt, level guidelines, and pronunciation error patterns switch per language
+  - Whisper STT receives language hint per language
+  - Text input placeholder changes per language
 - AI conversation sessions via SSE streaming (GPT-4o-mini)
 - Dynamic turn count: 6–20 turns based on user level (level × 2 + 4, capped at 20)
 - Voice input: microphone recording → Whisper STT
@@ -45,10 +50,18 @@ English conversation training web app for Japanese beginners. AI-powered speakin
 
 ### Feedback & History
 - Post-session feedback: achievements / natural expressions / improvement points / review phrases
+  - natural_expressions excludes punctuation-only differences (prompt improvement)
 - Pronunciation practice button: TTS playback of error phrases from feedback screen
 - Conversation log: collapsible on feedback screen
 - Level display + advice for next level
 - Learning history screen
+
+### User Practice Statistics
+- GET /api/v1/users/me/stats endpoint
+- Aggregated from existing sessions/turns tables (no new tables required)
+- Stats: streak (JST-based), total sessions, practice time, spoken turns, pronunciation correction count
+- Per-language stats: session count, last practice date
+- Stats card displayed on home screen
 
 ### Onboarding
 - 3-step onboarding flow with microphone permission acquisition
@@ -110,6 +123,7 @@ casual-talker/
 | 005 | add_max_turns.sql | max_turns column on sessions |
 | 006 | add_interpreted_text.sql | interpreted_text column on turns (pronunciation correction) |
 | 007 | add_token_hash_index.sql | index on refresh_tokens(token_hash) for lookup performance |
+| 008 | add_target_language.sql | target_language column on courses (multi-language support) |
 
 ## Development
 
@@ -157,6 +171,7 @@ GET  /api/v1/health
 # All routes below require JWT Bearer Token
 
 GET  /api/v1/users/me
+GET  /api/v1/users/me/stats
 GET  /api/v1/courses
 GET  /api/v1/courses/:id/themes
 GET  /api/v1/themes/:id

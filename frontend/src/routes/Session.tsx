@@ -29,6 +29,7 @@ interface LocationState {
   themeId?: string
   themeTitle?: string
   maxTurns?: number
+  targetLanguage?: string
 }
 
 export default function Session() {
@@ -238,6 +239,9 @@ export default function Session() {
 
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
+      // Pass the target language as a hint so Whisper skips auto-detection
+      const targetLanguage = locationState?.targetLanguage ?? 'en'
+      formData.append('language', targetLanguage)
 
       let userText = ''
       try {
@@ -355,7 +359,7 @@ export default function Session() {
                     handleTextSubmit()
                   }
                 }}
-                placeholder="英語で入力..."
+                placeholder={`${locationState?.targetLanguage === 'ko' ? '韓国語' : locationState?.targetLanguage === 'it' ? 'イタリア語' : locationState?.targetLanguage === 'pt' ? 'ポルトガル語' : '英語'}で入力...`}
                 disabled={phase !== 'waiting_user'}
                 className="flex-1 border border-neutral-300 rounded-2xl px-4 h-12 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-primary-600 disabled:opacity-50 bg-white"
               />

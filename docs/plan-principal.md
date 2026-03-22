@@ -4,6 +4,7 @@
 
 **更新履歴**
 - v3.1 (2026-03): MVP実装完了に伴い、実装状態を反映して更新（セキュリティ修正、発音解釈機能、動的ターン数、レベル表示、マイグレーション007、レート制限有効化）
+- v3.2 (2026-03): 多言語対応（英語/イタリア語/韓国語/ポルトガル語）、ユーザー練習統計API、マイグレーション008を追加
 
 ---
 
@@ -144,6 +145,7 @@ GET    /api/v1/health
 
 # ユーザー
 GET    /api/v1/users/me              # ユーザー情報
+GET    /api/v1/users/me/stats        # 練習統計（ストリーク、合計セッション数、練習時間、発話ターン数、発音修正回数、言語別統計）
 
 # コース・テーマ
 GET    /api/v1/courses               # コース一覧
@@ -165,7 +167,7 @@ POST   /api/v1/speech/tts            # テキスト→音声 (audio/mpeg stream)
 # AI会話
 POST   /api/v1/chat/stream           # AI会話 (SSE)
 POST   /api/v1/chat/hint             # ヒント取得（3段階）
-POST   /api/v1/chat/interpret        # 発音解釈（L/R混同等の日本語話者特有エラー補正）
+POST   /api/v1/chat/interpret        # 発音解釈（L/R混同等の日本語話者特有エラー補正）。target_language に応じてエラーパターンが切り替わる
 
 # フィードバック
 POST   /api/v1/feedback/generate     # フィードバック生成
@@ -211,11 +213,12 @@ CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 
 -- コース
 CREATE TABLE courses (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title       TEXT NOT NULL,
-    description TEXT,
-    sort_order  INTEGER DEFAULT 0,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title           TEXT NOT NULL,
+    description     TEXT,
+    sort_order      INTEGER DEFAULT 0,
+    target_language TEXT NOT NULL DEFAULT 'en',  -- 対応言語: en / it / ko / pt（migration 008で追加）
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- テーマ
@@ -600,6 +603,17 @@ ssh ${USER}@${SERVER} "mv /usr/local/bin/casual-talker.prev /usr/local/bin/casua
 - migration 007: refresh_tokens(token_hash)インデックス追加
 - レート制限の有効化
 - パストラバーサル防止、パスワード長制限、JWT検証強化
+
+### Phase 7: 多言語対応 + 練習統計 ✅
+- migration 008: courses.target_language カラム追加
+- 英語・イタリア語・韓国語・ポルトガル語の4言語対応（各8テーマ、計32テーマ）
+- プロンプト・レベルガイドライン・発音エラーパターンを言語別に切り替え（openai/prompts.go）
+- Whisper STT に言語ヒントを送信
+- ホーム画面に言語タブUI（🇬🇧🇮🇹🇰🇷🇧🇷）追加、テキスト入力プレースホルダーも言語連動
+- GET /api/v1/users/me/stats エンドポイント追加（既存 sessions/turns テーブルからSQL集計）
+- 統計項目: ストリーク（JST基準）、合計セッション数、練習時間、発話ターン数、発音修正回数、言語別セッション数・最終練習日
+- ホーム画面に統計カード表示
+- natural_expressions の句読点のみの差異を除外するフィードバック品質改善
 
 ---
 

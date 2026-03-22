@@ -105,6 +105,14 @@ func (h *ChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Load the parent course to determine the target language.
+	course, err := h.sessionRepo.GetCourse(r.Context(), theme.CourseID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	targetLang := course.TargetLanguage
+
 	// Determine the current turn number from existing turns.
 	turns, err := h.sessionRepo.ListTurnsBySession(r.Context(), session.ID)
 	if err != nil {
@@ -121,7 +129,7 @@ func (h *ChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	if req.InterpretedText != "" && req.InterpretedText != req.Message {
 		userMsgForAI = req.InterpretedText
 	}
-	systemPrompt := oai.BuildSystemPrompt(*theme, session.Difficulty, currentTurn, session.MaxTurns)
+	systemPrompt := oai.BuildSystemPrompt(*theme, session.Difficulty, currentTurn, session.MaxTurns, targetLang)
 	messages := buildChatMessages(systemPrompt, turns, userMsgForAI)
 
 	// Configure SSE headers. The X-Accel-Buffering header disables nginx
@@ -243,7 +251,15 @@ func (h *ChatHandler) Interpret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prompt := oai.BuildInterpretPrompt(req.RawText)
+	// Resolve target language from theme → course.
+	interpretLang := "en"
+	if theme, err := h.sessionRepo.GetTheme(r.Context(), session.ThemeID); err == nil {
+		if course, err := h.sessionRepo.GetCourse(r.Context(), theme.CourseID); err == nil {
+			interpretLang = course.TargetLanguage
+		}
+	}
+
+	prompt := oai.BuildInterpretPrompt(req.RawText, interpretLang)
 
 	resp, err := h.openai.Underlying().CreateChatCompletion(r.Context(), openailib.ChatCompletionRequest{
 		Model: chatModel,
@@ -338,8 +354,16 @@ func (h *ChatHandler) Hint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve target language from theme → course.
+	hintLang := "en"
+	if theme, err := h.sessionRepo.GetTheme(r.Context(), session.ThemeID); err == nil {
+		if course, err := h.sessionRepo.GetCourse(r.Context(), theme.CourseID); err == nil {
+			hintLang = course.TargetLanguage
+		}
+	}
+
 	// Ask the model for a structured hint.
-	hintPrompt := oai.BuildHintPrompt(aiMessage, session.Difficulty)
+	hintPrompt := oai.BuildHintPrompt(aiMessage, session.Difficulty, hintLang)
 
 	resp, err := h.openai.Underlying().CreateChatCompletion(r.Context(), openailib.ChatCompletionRequest{
 		Model: chatModel,
