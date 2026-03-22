@@ -22,7 +22,7 @@ interface FeedbackData {
   session_id: string
   achievements: string[]
   natural_expressions: NaturalExpression[] | string[]
-  improvements: string[]
+  improvements: (string | { point: string; example: string })[]
   review_phrases: string[]
   current_level?: CurrentLevel
   next_level_advice?: string
@@ -329,12 +329,23 @@ export default function Feedback() {
           <section className="bg-white rounded-2xl p-4 shadow-sm">
             <h2 className="text-lg font-semibold text-neutral-900 mb-3">📝 改善ポイント</h2>
             <ul className="space-y-2">
-              {improvements.map((item, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm text-neutral-800">
-                  <Lightbulb size={16} className="text-secondary-500 mt-0.5 flex-shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
+              {improvements.map((item, index) => {
+                const point = typeof item === 'string' ? item : item.point
+                const example = typeof item === 'object' && item !== null ? item.example : null
+                return (
+                  <li key={index} className="flex items-start gap-2 text-sm text-neutral-800">
+                    <Lightbulb size={16} className="text-secondary-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span>{point}</span>
+                      {example && (
+                        <p className="mt-1 text-xs text-primary-700 bg-primary-50 rounded-lg px-2 py-1 italic">
+                          例: {example}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
           </section>
         )}

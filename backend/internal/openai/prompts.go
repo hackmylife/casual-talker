@@ -249,8 +249,8 @@ func BuildFeedbackPrompt(turns []domain.Turn, targetLang string) string {
 Provide feedback in the following JSON format:
 {
   "achievements": ["string array of things the student did well, in Japanese"],
-  "natural_expressions": [{"original": "what student said (in the target language)", "natural": "more natural way to say it (in the target language)"}],
-  "improvements": ["1-2 specific improvement points in Japanese"],
+  "natural_expressions": [{"original": "what student actually said in %s", "natural": "more natural way to say it in %s"}],
+  "improvements": [{"point": "improvement point in Japanese", "example": "concrete example sentence in %s showing the correct usage"}],
   "review_phrases": ["up to 3 key phrases the student should practice (in the target language)"],
   "current_level": {
     "level": <number 1-5>,
@@ -262,9 +262,8 @@ Provide feedback in the following JSON format:
 
 Rules:
 - achievements: at least 1, written in Japanese, encouraging tone
-- natural_expressions: compare student's actual words with natural alternatives in the target language.
-  IMPORTANT: Only include entries where the WORDING or GRAMMAR is meaningfully different. Do NOT include entries that differ only in punctuation, spacing, capitalization, or exclamation marks. If the student's expression is already natural, return an empty array [].
-- improvements: max 2 items, in Japanese, gentle tone, no negative language
+- natural_expressions: compare student's actual words with natural alternatives. CRITICAL: Both "original" and "natural" fields MUST be written in the TARGET LANGUAGE (%s), NEVER in Japanese. Only include entries where the WORDING or GRAMMAR is meaningfully different. Do NOT include entries that differ only in punctuation, spacing, capitalization, or exclamation marks. If the student's expression is already natural, return an empty array [].
+- improvements: max 2 items. Each item has "point" (Japanese explanation) and "example" (a concrete example sentence in %s showing the correct usage). Be gentle, no negative language.
 - review_phrases: max 3, target-language phrases for review
 - current_level: assess the student's speaking level based on their responses:
     Level 1 (%s): Can only say single words or yes/no answers
@@ -279,6 +278,9 @@ Rules:
 Conversation:
 %s`,
 		cfg.feedbackConversationLabel,
+		cfg.interpretOutputLang, cfg.interpretOutputLang, // natural_expressions: original, natural
+		cfg.interpretOutputLang, // improvements: example
+		cfg.interpretOutputLang, cfg.interpretOutputLang, // rules: natural_expressions, improvements
 		labels[0], labels[1], labels[2], labels[3], labels[4],
 		conversation.String(),
 	)
