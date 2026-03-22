@@ -275,6 +275,7 @@ func BuildSystemPrompt(theme domain.Theme, level int, turnNumber, maxTurns int, 
 	}
 
 	sb.WriteString("Rules:\n")
+	sb.WriteString("- CRITICAL: You MUST speak ONLY in the target language in ALL your messages. NEVER use English unless the target language IS English.\n")
 	sb.WriteString("- Always speak first in each turn\n")
 	sb.WriteString(fmt.Sprintf("- %s\n", fmt.Sprintf(cfg.levelInstruction, level)))
 	sb.WriteString("- Keep responses to 1-2 sentences\n")
@@ -335,7 +336,7 @@ func BuildInterpretPrompt(rawText string, targetLang string) string {
 		`You are a %s pronunciation error corrector for Japanese speakers.
 
 CRITICAL RULES:
-- The output MUST be in %s. NEVER translate to Japanese or any other language.
+- The output MUST be in %s. NEVER translate to a different language.
 - ONLY fix pronunciation-related transcription errors. Do NOT change the meaning or rephrase.
 - Do NOT fix grammar. Only fix words that are clearly wrong due to pronunciation issues.
 - If the text is already correct %s (even with grammar mistakes), return it as-is with is_different=false.
@@ -377,9 +378,9 @@ func BuildFeedbackPrompt(turns []domain.Turn, targetLang string) string {
 Provide feedback in the following JSON format:
 {
   "achievements": ["string array of things the student did well, in Japanese"],
-  "natural_expressions": [{"original": "COPY the student's EXACT words here (%s only, NOT Japanese)", "natural": "how a native speaker would say the same thing (%s only, NOT Japanese)"}],
-  "improvements": [{"point": "improvement point in Japanese", "example": "a correct example sentence in %s (NOT Japanese)"}],
-  "conversation_tips": [{"situation": "describe in Japanese when in the conversation this tip applies", "native_would_say": "what a native speaker would say in this situation (in %s, NOT Japanese)", "explanation": "brief Japanese explanation of why natives say this"}],
+  "natural_expressions": [{"original": "COPY the student's EXACT words here (in %s)", "natural": "how a native speaker would say the same thing (in %s)"}],
+  "improvements": [{"point": "improvement point in Japanese (日本語)", "example": "a correct example sentence in %s"}],
+  "conversation_tips": [{"situation": "describe in Japanese (日本語) when in the conversation this tip applies", "native_would_say": "what a native speaker would say in this situation (in %s)", "explanation": "brief Japanese (日本語) explanation of why natives say this"}],
   "review_phrases": ["up to 3 key phrases the student should practice (in the target language)"],
   "current_level": {
     "level": <number 1-5>,
@@ -391,12 +392,12 @@ Provide feedback in the following JSON format:
 
 Rules:
 - achievements: at least 1, written in Japanese, encouraging tone
-- natural_expressions: CRITICAL LANGUAGE RULE — Both "original" and "natural" MUST be in %s. NEVER write Japanese in these fields.
+- natural_expressions: CRITICAL LANGUAGE RULE — Both "original" and "natural" MUST be in %s (the target language the student is learning). Do NOT write in any other language.
   "original" = copy the student's exact words from the conversation.
   "natural" = how a NATIVE SPEAKER would express the same idea in %s. Do NOT just fix grammar — show a completely natural, idiomatic way a native would phrase it. The goal is to teach natural expression patterns, not just correct mistakes.
   Only include when the native version would be meaningfully different. Return [] if the student already sounds natural.
-- improvements: max 2 items. "point" is in Japanese. "example" MUST be in %s (NEVER Japanese). Be gentle, no negative language.
-- conversation_tips: 2-3 tips showing what a native speaker would say in specific moments of THIS conversation. Look at the whole conversation flow and find moments where a native would respond differently — not just grammar, but conversation style, reactions, follow-up questions, humor, filler words, etc. "situation" is in Japanese, "native_would_say" MUST be in %s (NEVER Japanese), "explanation" is in Japanese.
+- improvements: max 2 items. "point" is in Japanese (日本語). "example" MUST be in %s (the target language). Be gentle, no negative language.
+- conversation_tips: 2-3 tips showing what a native speaker would say in specific moments of THIS conversation. Look at the whole conversation flow and find moments where a native would respond differently — not just grammar, but conversation style, reactions, follow-up questions, humor, filler words, etc. "situation" is in Japanese (日本語). "native_would_say" MUST be in %s (the target language). "explanation" is in Japanese (日本語).
 - review_phrases: max 3, target-language phrases for review
 - current_level: assess the student's speaking level based on their responses:
     Level 1 (%s): Can only say single words or yes/no answers
