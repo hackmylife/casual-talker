@@ -359,7 +359,7 @@ export default function Session() {
                     handleTextSubmit()
                   }
                 }}
-                placeholder={`${locationState?.targetLanguage === 'ko' ? '韓国語' : locationState?.targetLanguage === 'it' ? 'イタリア語' : locationState?.targetLanguage === 'pt' ? 'ポルトガル語' : '英語'}で入力...`}
+                placeholder={`${{ ko: '韓国語', it: 'イタリア語', pt: 'ポルトガル語', ja: '日本語', en: '英語' }[locationState?.targetLanguage ?? 'en'] ?? '英語'}で入力...`}
                 disabled={phase !== 'waiting_user'}
                 className="flex-1 border border-neutral-300 rounded-2xl px-4 h-12 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-primary-600 disabled:opacity-50 bg-white"
               />

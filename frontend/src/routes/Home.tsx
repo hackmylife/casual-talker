@@ -44,6 +44,7 @@ const LANGUAGES: { code: string; label: string; flag: string }[] = [
   { code: 'it', label: 'イタリア語', flag: '🇮🇹' },
   { code: 'ko', label: '韓国語', flag: '🇰🇷' },
   { code: 'pt', label: 'ポルトガル語', flag: '🇧🇷' },
+  { code: 'ja', label: '日本語', flag: '🇯🇵' },
 ]
 
 const STORAGE_KEY_LANG = 'selected_language'

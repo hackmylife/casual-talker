@@ -59,6 +59,15 @@ var scenariosByTheme = map[string][]string{
 	"Fim de semana":  {"planejando atividades de fim de semana", "contando sobre a aventura do último fim de semana", "comparando fins de semana típicos", "sugerindo ideias divertidas"},
 	"Compras":        {"fazendo compras no mercado local", "comprando presente de aniversário", "comparando preços online e na loja", "procurando souvenirs viajando"},
 	"Clima":          {"decidindo se sai com base no clima", "falando sobre diferenças sazonais", "planejando evento ao ar livre", "comparando clima em cidades diferentes"},
+	// Japanese
+	"あいさつ":  {"カフェで初めて会う", "公園で偶然会う", "パーティーで話しかける", "新しい隣人に挨拶する"},
+	"自己紹介":  {"新しいクラスの初日", "言語交換イベントで会う", "会議で自己紹介する", "オンラインビデオ通話で話す"},
+	"家族":     {"友達に家族の写真を見せる", "家族旅行の話をする", "家族の伝統について話す", "友達と家族を比べる"},
+	"趣味":     {"お互いの趣味をおすすめする", "新しく始めた趣味について話す", "週末の活動を話す", "面白い趣味の話を共有する"},
+	"食べ物":    {"レストランで一緒に注文する", "友達と料理する", "お祭りで屋台の食べ物を食べる", "自分の国のレシピを共有する"},
+	"週末":     {"週末の計画を立てる", "先週末の冒険を話す", "普段の週末を比べる", "楽しい週末のアイデアを提案する"},
+	"買い物":    {"地元の市場で買い物する", "友達の誕生日プレゼントを買う", "ネットと店舗の価格を比べる", "旅行中にお土産を探す"},
+	"天気":     {"天気を見て外出を決める", "季節ごとの天気の違いを話す", "屋外イベントの計画を立てる", "違う都市の天気を比べる"},
 }
 
 // pickRandom returns a random element from a slice.
@@ -195,6 +204,34 @@ var languageConfigs = map[string]languageConfig{
 			"自発展開レベル",
 		},
 		hintLevelDesc: "Japanese Portuguese learner",
+	},
+	"ja": {
+		partnerIntro:     "You are a friendly Japanese conversation partner for beginners learning Japanese.",
+		levelInstruction: "Use simple Japanese appropriate for level %d (1-5). Speak in Japanese. Use polite form (です/ます).",
+		levelGuidelines: `Level Guidelines:
+- Level 1: Single words, very short phrases. Ask yes/no questions. Example: "すしが好きですか？" → expect "はい"
+- Level 2: Basic sentences (です / ます form). Ask simple what/where questions. Example: "何が好きですか？" → expect "すしが好きです。"
+- Level 3: Add reasons. Ask "どうして" questions. Example: "どうして好きですか？" → expect "おいしいからです。"
+- Level 4: 2-3 sentences. Encourage elaboration. Example: "もっと教えてください。"
+- Level 5: Free-form discussion with natural transitions. Mix casual and polite forms.`,
+		interpretErrorExamples: `Common pronunciation errors when non-native speakers speak Japanese (STT transcription):
+- Long vowel confusion: "おばさん" vs "おばあさん", "おじさん" vs "おじいさん"
+- っ (double consonant) missed: "きて" → "きって", "かた" → "かった"
+- Pitch accent errors causing different word recognition
+- は particle read as "ha" instead of "wa"
+- を particle read as "wo" instead of "o"
+- ん confused with other sounds
+- ず/づ and じ/ぢ confusion`,
+		interpretOutputLang:       "Japanese",
+		feedbackConversationLabel: "Japanese conversation",
+		feedbackLevelLabels: [5]string{
+			"単語・超短文レベル",
+			"基本文レベル",
+			"理由追加レベル",
+			"複数文レベル",
+			"自発展開レベル",
+		},
+		hintLevelDesc: "Japanese language learner",
 	},
 }
 

@@ -48,7 +48,7 @@ func (h *SpeechHandler) STT(w http.ResponseWriter, r *http.Request) {
 	langHint := ""
 	if lang := r.FormValue("language"); lang != "" {
 		switch lang {
-		case "en", "it", "ko", "pt":
+		case "en", "it", "ko", "pt", "ja":
 			langHint = lang
 		}
 	}
