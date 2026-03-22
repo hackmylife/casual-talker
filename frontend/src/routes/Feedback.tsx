@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router'
+import { useParams, useNavigate, useLocation } from 'react-router'
 import { Check, Lightbulb, Bookmark, Volume2 } from 'lucide-react'
 import { api } from '@/lib/api-client'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -94,9 +94,17 @@ function levelColor(level: number): string {
   }
 }
 
+interface LocationState {
+  levelChanged?: boolean
+  previousLevel?: number
+  newLevel?: number
+}
+
 export default function Feedback() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const levelState = location.state as LocationState | null
 
   const [feedback, setFeedback] = useState<FeedbackData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -224,6 +232,35 @@ export default function Feedback() {
         <h1 className="text-2xl font-bold text-neutral-900">セッション完了！</h1>
         <p className="mt-1 text-neutral-600">お疲れさまでした</p>
       </div>
+
+      {/* Level change notification */}
+      {levelState?.levelChanged && levelState.newLevel != null && (
+        <div className="mx-auto mb-4 max-w-sm">
+          <div className={`rounded-2xl p-4 text-center shadow-sm ${
+            (levelState.newLevel ?? 0) > (levelState.previousLevel ?? 0)
+              ? 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200'
+              : 'bg-blue-50 border border-blue-200'
+          }`}>
+            {(levelState.newLevel ?? 0) > (levelState.previousLevel ?? 0) ? (
+              <>
+                <p className="text-2xl mb-1">🎉</p>
+                <p className="text-sm font-bold text-amber-800">
+                  レベルアップ！ Lv{levelState.previousLevel} → Lv{levelState.newLevel}
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  次のセッションからターン数が増えます
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-blue-800">
+                  レベル変更: Lv{levelState.previousLevel} → Lv{levelState.newLevel}
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Current level section */}

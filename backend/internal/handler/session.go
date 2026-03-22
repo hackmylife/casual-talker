@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -63,8 +64,11 @@ type completeSessionRequest struct {
 // It always includes the updated session; feedback is included when generation
 // succeeds and nil otherwise (the client can fall back to GET .../feedback).
 type completeSessionResponse struct {
-	Session  sessionResponse   `json:"session"`
-	Feedback *feedbackResponse `json:"feedback,omitempty"`
+	Session       sessionResponse   `json:"session"`
+	Feedback      *feedbackResponse `json:"feedback,omitempty"`
+	LevelChanged  bool              `json:"level_changed,omitempty"`
+	PreviousLevel int               `json:"previous_level,omitempty"`
+	NewLevel      int               `json:"new_level,omitempty"`
 }
 
 // --- response mappers ---
@@ -417,6 +421,26 @@ func (h *SessionHandler) Complete(w http.ResponseWriter, r *http.Request) {
 		} else {
 			fbResp := toFeedbackResponse(*fb)
 			resp.Feedback = &fbResp
+
+			// Update user level based on feedback assessment.
+			// Only update if the assessed level differs from the current level.
+			var assessedLevel struct {
+				Level int `json:"level"`
+			}
+			if err := json.Unmarshal(fb.CurrentLevel, &assessedLevel); err == nil && assessedLevel.Level > 0 {
+				currentUser, userErr := h.authRepo.GetUserByID(r.Context(), userID)
+				if userErr == nil && currentUser.Level != assessedLevel.Level {
+					prevLevel := currentUser.Level
+					if updateErr := h.authRepo.UpdateUserLevel(r.Context(), userID, assessedLevel.Level); updateErr != nil {
+						slog.Error("failed to update user level", "user_id", userID, "error", updateErr)
+					} else {
+						slog.Info("user level updated", "user_id", userID, "from", prevLevel, "to", assessedLevel.Level)
+						resp.LevelChanged = true
+						resp.PreviousLevel = prevLevel
+						resp.NewLevel = assessedLevel.Level
+					}
+				}
+			}
 		}
 	}
 

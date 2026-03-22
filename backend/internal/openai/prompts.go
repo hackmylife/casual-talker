@@ -299,7 +299,11 @@ func BuildSystemPrompt(theme domain.Theme, level int, turnNumber, maxTurns int, 
 	}
 
 	sb.WriteString(fmt.Sprintf("Turn: %d of %d\n", turnNumber, maxTurns))
-	sb.WriteString("When turn reaches maxTurns, wrap up the conversation naturally.")
+	if turnNumber >= maxTurns {
+		sb.WriteString("This is the LAST turn. Wrap up the conversation with a warm goodbye. Do NOT ask any new questions. Just thank the student and say goodbye naturally.")
+	} else if turnNumber >= maxTurns-1 {
+		sb.WriteString("This is the second-to-last turn. Start wrapping up the conversation. You may ask one final simple question or make a closing remark.")
+	}
 
 	return sb.String()
 }

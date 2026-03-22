@@ -70,10 +70,21 @@ export default function Session() {
     if (!sessionId) return
     setPhase('session_complete')
     try {
-      await api.put(`/api/v1/sessions/${sessionId}/complete`, {
+      const result = await api.put<{
+        level_changed?: boolean
+        previous_level?: number
+        new_level?: number
+      }>(`/api/v1/sessions/${sessionId}/complete`, {
         turn_count: useSessionStore.getState().turnNumber,
       })
-    } finally {
+      navigate(`/feedback/${sessionId}`, {
+        state: {
+          levelChanged: result.level_changed,
+          previousLevel: result.previous_level,
+          newLevel: result.new_level,
+        },
+      })
+    } catch {
       navigate(`/feedback/${sessionId}`)
     }
   }, [sessionId, setPhase, navigate])

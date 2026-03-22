@@ -24,6 +24,7 @@ type AuthRepository interface {
 	GetRefreshToken(ctx context.Context, tokenHash string) (*domain.RefreshToken, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID string) error
+	UpdateUserLevel(ctx context.Context, userID string, level int) error
 }
 
 // PgxAuthRepository is a pgx-backed implementation of AuthRepository.
@@ -182,4 +183,13 @@ func scanUser(row pgx.Row) (*domain.User, error) {
 	u.DisplayName = displayName
 
 	return &u, nil
+}
+
+// UpdateUserLevel sets the user's current level.
+func (r *PgxAuthRepository) UpdateUserLevel(ctx context.Context, userID string, level int) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE users SET level = $2, updated_at = now() WHERE id = $1`,
+		userID, level,
+	)
+	return err
 }
