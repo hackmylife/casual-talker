@@ -27,6 +27,7 @@ interface CreateSessionResponse {
 interface LanguageStats {
   sessions: number
   last_practiced: string | null
+  level: number
 }
 
 interface UserStats {
@@ -48,6 +49,31 @@ const LANGUAGES: { code: string; label: string; flag: string }[] = [
 ]
 
 const STORAGE_KEY_LANG = 'selected_language'
+
+// Level labels shown next to the Lv badge
+const LEVEL_LABELS: Record<number, string> = {
+  1: '単語・超短文',
+  2: '基本文',
+  3: '理由追加',
+  4: '複数文',
+  5: '自発展開',
+}
+
+// Tailwind classes for level badge colour
+function levelBadgeClass(level: number): string {
+  switch (level) {
+    case 2:
+      return 'bg-blue-100 text-blue-700'
+    case 3:
+      return 'bg-green-100 text-green-700'
+    case 4:
+      return 'bg-purple-100 text-purple-700'
+    case 5:
+      return 'bg-yellow-100 text-yellow-700'
+    default:
+      return 'bg-neutral-100 text-neutral-500'
+  }
+}
 
 function getSavedLanguage(): string {
   const saved = localStorage.getItem(STORAGE_KEY_LANG)
@@ -121,6 +147,7 @@ function StatItem({ emoji, value }: { emoji: string; value: string }) {
 
 // LangStats renders the per-language mini statistics below the language tabs.
 // Only the currently selected language is shown.
+// When the user has no sessions for this language, a "first lesson" prompt is shown.
 function LangStats({
   stats,
   selectedLang,
@@ -128,15 +155,34 @@ function LangStats({
   stats: UserStats | null
   selectedLang: string
 }) {
-  if (!stats || stats.total_sessions === 0) return null
+  if (!stats) return null
+
   const ls = stats.languages[selectedLang]
-  if (!ls || ls.sessions === 0) return null
+  const level = ls?.level ?? 1
+  const badgeClass = levelBadgeClass(level)
+  const levelLabel = LEVEL_LABELS[level] ?? ''
+
+  if (!ls || ls.sessions === 0) {
+    return (
+      <div className="flex items-center gap-2 mb-4 -mt-4">
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badgeClass}`}>
+          Lv.{level}
+        </span>
+        <span className="text-xs text-neutral-500">はじめてのレッスン</span>
+      </div>
+    )
+  }
 
   return (
-    <p className="text-xs text-neutral-500 mb-4 -mt-4">
-      {ls.sessions}セッション
-      {ls.last_practiced ? ` • 最終: ${formatLastPracticed(ls.last_practiced)}` : ''}
-    </p>
+    <div className="flex items-center gap-2 mb-4 -mt-4">
+      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badgeClass}`}>
+        Lv.{level}
+      </span>
+      <span className="text-xs text-neutral-500">
+        {levelLabel} • {ls.sessions}セッション
+        {ls.last_practiced ? ` • 最終: ${formatLastPracticed(ls.last_practiced)}` : ''}
+      </span>
+    </div>
   )
 }
 

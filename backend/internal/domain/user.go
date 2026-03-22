@@ -13,6 +13,16 @@ type User struct {
 	UpdatedAt    time.Time
 }
 
+// UserLevel represents a user's proficiency level for a specific target language.
+// Each user has an independent level per language, stored in the user_levels table.
+type UserLevel struct {
+	ID        string
+	UserID    string
+	Language  string
+	Level     int
+	UpdatedAt time.Time
+}
+
 // AllowedEmail represents an email address that is permitted to register.
 type AllowedEmail struct {
 	ID        string

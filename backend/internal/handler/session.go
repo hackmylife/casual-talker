@@ -281,14 +281,30 @@ func (h *SessionHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fetch the user's level to compute the appropriate number of turns.
-	// On failure fall back to the default (level 1) rather than aborting.
+	// Resolve the target language for the selected theme so that the
+	// language-specific level can be looked up from user_levels.
 	userLevel := 1
 	if h.authRepo != nil {
-		if u, err := h.authRepo.GetUserByID(r.Context(), userID); err == nil {
-			userLevel = u.Level
+		targetLang := ""
+		if theme, err := h.repo.GetTheme(r.Context(), req.ThemeID); err == nil {
+			if course, err := h.repo.GetCourse(r.Context(), theme.CourseID); err == nil {
+				targetLang = course.TargetLanguage
+			}
+		}
+		if targetLang != "" {
+			if lvl, err := h.authRepo.GetUserLevel(r.Context(), userID, targetLang); err == nil {
+				userLevel = lvl
+			} else {
+				slog.Warn("failed to fetch user language level; using default",
+					"user_id", userID, "language", targetLang, "error", err)
+			}
 		} else {
-			slog.Warn("failed to fetch user level; using default", "user_id", userID, "error", err)
+			// Fallback to global user level when language cannot be resolved.
+			if u, err := h.authRepo.GetUserByID(r.Context(), userID); err == nil {
+				userLevel = u.Level
+			} else {
+				slog.Warn("failed to fetch user level; using default", "user_id", userID, "error", err)
+			}
 		}
 	}
 	mt := maxTurnsForLevel(userLevel)
@@ -422,22 +438,49 @@ func (h *SessionHandler) Complete(w http.ResponseWriter, r *http.Request) {
 			fbResp := toFeedbackResponse(*fb)
 			resp.Feedback = &fbResp
 
-			// Update user level based on feedback assessment.
-			// Only update if the assessed level differs from the current level.
+			// Update the language-specific user level based on feedback assessment.
+			// Resolve the target language from session → theme → course.
 			var assessedLevel struct {
 				Level int `json:"level"`
 			}
 			if err := json.Unmarshal(fb.CurrentLevel, &assessedLevel); err == nil && assessedLevel.Level > 0 {
-				currentUser, userErr := h.authRepo.GetUserByID(r.Context(), userID)
-				if userErr == nil && currentUser.Level != assessedLevel.Level {
-					prevLevel := currentUser.Level
-					if updateErr := h.authRepo.UpdateUserLevel(r.Context(), userID, assessedLevel.Level); updateErr != nil {
-						slog.Error("failed to update user level", "user_id", userID, "error", updateErr)
-					} else {
-						slog.Info("user level updated", "user_id", userID, "from", prevLevel, "to", assessedLevel.Level)
-						resp.LevelChanged = true
-						resp.PreviousLevel = prevLevel
-						resp.NewLevel = assessedLevel.Level
+				// Determine target language for this session.
+				targetLang := ""
+				if theme, thErr := h.repo.GetTheme(r.Context(), updated.ThemeID); thErr == nil {
+					if course, cErr := h.repo.GetCourse(r.Context(), theme.CourseID); cErr == nil {
+						targetLang = course.TargetLanguage
+					}
+				}
+
+				if targetLang != "" {
+					prevLevel, _ := h.authRepo.GetUserLevel(r.Context(), userID, targetLang)
+					if prevLevel != assessedLevel.Level {
+						if updateErr := h.authRepo.SetUserLevel(r.Context(), userID, targetLang, assessedLevel.Level); updateErr != nil {
+							slog.Error("failed to update user language level",
+								"user_id", userID, "language", targetLang, "error", updateErr)
+						} else {
+							slog.Info("user language level updated",
+								"user_id", userID, "language", targetLang,
+								"from", prevLevel, "to", assessedLevel.Level)
+							resp.LevelChanged = true
+							resp.PreviousLevel = prevLevel
+							resp.NewLevel = assessedLevel.Level
+						}
+					}
+				} else {
+					// Fallback: update global level when language cannot be resolved.
+					currentUser, userErr := h.authRepo.GetUserByID(r.Context(), userID)
+					if userErr == nil && currentUser.Level != assessedLevel.Level {
+						prevLevel := currentUser.Level
+						if updateErr := h.authRepo.UpdateUserLevel(r.Context(), userID, assessedLevel.Level); updateErr != nil {
+							slog.Error("failed to update user level", "user_id", userID, "error", updateErr)
+						} else {
+							slog.Info("user level updated", "user_id", userID,
+								"from", prevLevel, "to", assessedLevel.Level)
+							resp.LevelChanged = true
+							resp.PreviousLevel = prevLevel
+							resp.NewLevel = assessedLevel.Level
+						}
 					}
 				}
 			}
@@ -537,6 +580,7 @@ type statsResponse struct {
 type languageStats struct {
 	Sessions      int        `json:"sessions"`
 	LastPracticed *time.Time `json:"last_practiced"`
+	Level         int        `json:"level"`
 }
 
 // Stats handles GET /api/v1/users/me/stats.
@@ -577,12 +621,20 @@ func (h *SessionHandler) Stats(w http.ResponseWriter, r *http.Request) {
 
 	streak := calculateStreak(sessionDates)
 
-	// Build the languages map.
+	// Build the languages map, enriching each entry with the user's level for
+	// that language fetched from the user_levels table.
 	languages := make(map[string]languageStats, len(langStats))
 	for _, ls := range langStats {
+		level := ls.Level
+		if h.authRepo != nil && level == 0 {
+			if lvl, err := h.authRepo.GetUserLevel(ctx, userID, ls.Language); err == nil {
+				level = lvl
+			}
+		}
 		languages[ls.Language] = languageStats{
 			Sessions:      ls.Sessions,
 			LastPracticed: ls.LastPracticed,
+			Level:         level,
 		}
 	}
 

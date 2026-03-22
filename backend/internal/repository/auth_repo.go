@@ -25,6 +25,12 @@ type AuthRepository interface {
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeAllUserRefreshTokens(ctx context.Context, userID string) error
 	UpdateUserLevel(ctx context.Context, userID string, level int) error
+	// GetUserLevel returns the user's level for the given target language.
+	// If no record exists yet (the user has never completed a session in that
+	// language), it returns the default level of 1 without an error.
+	GetUserLevel(ctx context.Context, userID, language string) (int, error)
+	// SetUserLevel upserts the user's level for the given target language.
+	SetUserLevel(ctx context.Context, userID, language string, level int) error
 }
 
 // PgxAuthRepository is a pgx-backed implementation of AuthRepository.
@@ -185,11 +191,41 @@ func scanUser(row pgx.Row) (*domain.User, error) {
 	return &u, nil
 }
 
-// UpdateUserLevel sets the user's current level.
+// UpdateUserLevel sets the user's current level on the users table.
+// Retained for backward compatibility; new code should prefer SetUserLevel.
 func (r *PgxAuthRepository) UpdateUserLevel(ctx context.Context, userID string, level int) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE users SET level = $2, updated_at = now() WHERE id = $1`,
 		userID, level,
 	)
+	return err
+}
+
+// GetUserLevel returns the user's level for the given target language from the
+// user_levels table. Returns 1 (the default) when no record exists yet.
+func (r *PgxAuthRepository) GetUserLevel(ctx context.Context, userID, language string) (int, error) {
+	const q = `SELECT level FROM user_levels WHERE user_id = $1 AND language = $2`
+
+	var level int
+	err := r.pool.QueryRow(ctx, q, userID, language).Scan(&level)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 1, nil
+		}
+		return 0, err
+	}
+	return level, nil
+}
+
+// SetUserLevel upserts the user's level for the given target language into the
+// user_levels table. On conflict it updates the level and refreshes updated_at.
+func (r *PgxAuthRepository) SetUserLevel(ctx context.Context, userID, language string, level int) error {
+	const q = `
+		INSERT INTO user_levels (user_id, language, level)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (user_id, language)
+		DO UPDATE SET level = EXCLUDED.level, updated_at = now()`
+
+	_, err := r.pool.Exec(ctx, q, userID, language, level)
 	return err
 }
