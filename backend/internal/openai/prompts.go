@@ -340,8 +340,8 @@ func BuildFeedbackPrompt(turns []domain.Turn, targetLang string) string {
 Provide feedback in the following JSON format:
 {
   "achievements": ["string array of things the student did well, in Japanese"],
-  "natural_expressions": [{"original": "what student actually said in %s", "natural": "more natural way to say it in %s"}],
-  "improvements": [{"point": "improvement point in Japanese", "example": "concrete example sentence in %s showing the correct usage"}],
+  "natural_expressions": [{"original": "COPY the student's EXACT words here (%s only, NOT Japanese)", "natural": "rewrite it more naturally (%s only, NOT Japanese)"}],
+  "improvements": [{"point": "improvement point in Japanese", "example": "a correct example sentence in %s (NOT Japanese)"}],
   "review_phrases": ["up to 3 key phrases the student should practice (in the target language)"],
   "current_level": {
     "level": <number 1-5>,
@@ -353,8 +353,8 @@ Provide feedback in the following JSON format:
 
 Rules:
 - achievements: at least 1, written in Japanese, encouraging tone
-- natural_expressions: compare student's actual words with natural alternatives. CRITICAL: Both "original" and "natural" fields MUST be written in the TARGET LANGUAGE (%s), NEVER in Japanese. Only include entries where the WORDING or GRAMMAR is meaningfully different. Do NOT include entries that differ only in punctuation, spacing, capitalization, or exclamation marks. If the student's expression is already natural, return an empty array [].
-- improvements: max 2 items. Each item has "point" (Japanese explanation) and "example" (a concrete example sentence in %s showing the correct usage). Be gentle, no negative language.
+- natural_expressions: CRITICAL LANGUAGE RULE — Both "original" and "natural" MUST be in %s. NEVER write Japanese in these fields. "original" = copy the student's exact words from the conversation. "natural" = rewrite it more naturally in %s. Only include when wording/grammar is meaningfully different (not just punctuation). Return [] if already natural.
+- improvements: max 2 items. "point" is in Japanese. "example" MUST be in %s (NEVER Japanese). Be gentle, no negative language.
 - review_phrases: max 3, target-language phrases for review
 - current_level: assess the student's speaking level based on their responses:
     Level 1 (%s): Can only say single words or yes/no answers
@@ -369,9 +369,10 @@ Rules:
 Conversation:
 %s`,
 		cfg.feedbackConversationLabel,
-		cfg.interpretOutputLang, cfg.interpretOutputLang, // natural_expressions: original, natural
-		cfg.interpretOutputLang, // improvements: example
-		cfg.interpretOutputLang, cfg.interpretOutputLang, // rules: natural_expressions, improvements
+		cfg.interpretOutputLang, cfg.interpretOutputLang, // JSON template: natural_expressions original, natural
+		cfg.interpretOutputLang,                          // JSON template: improvements example
+		cfg.interpretOutputLang, cfg.interpretOutputLang, // Rules: natural_expressions (2 mentions)
+		cfg.interpretOutputLang,                          // Rules: improvements example
 		labels[0], labels[1], labels[2], labels[3], labels[4],
 		conversation.String(),
 	)
