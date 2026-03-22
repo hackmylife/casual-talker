@@ -34,6 +34,9 @@ type SessionRepository interface {
 	CreateFeedback(ctx context.Context, fb *domain.Feedback) (*domain.Feedback, error)
 	GetFeedbackBySession(ctx context.Context, sessionID string) (*domain.Feedback, error)
 
+	// Past session summaries (for conversation variety)
+	GetPastSessionTopics(ctx context.Context, userID, themeID string, limit int) ([]string, error)
+
 	// Stats
 	GetUserStats(ctx context.Context, userID string) (*domain.UserStats, error)
 	GetUserLanguageStats(ctx context.Context, userID string) ([]domain.LanguageStat, error)
@@ -497,4 +500,37 @@ func scanFeedback(row pgxRow) (*domain.Feedback, error) {
 		return nil, err
 	}
 	return &fb, nil
+}
+
+// GetPastSessionTopics returns short summaries of the user's previous sessions
+// on a given theme. Each summary is the AI's first message from the session,
+// which indicates what the conversation was about. This helps the prompt avoid
+// repeating the same conversation starters.
+func (r *PgxSessionRepository) GetPastSessionTopics(ctx context.Context, userID, themeID string, limit int) ([]string, error) {
+	query := `
+		SELECT t.ai_text
+		FROM turns t
+		JOIN sessions s ON t.session_id = s.id
+		WHERE s.user_id = $1
+		  AND s.theme_id = $2
+		  AND s.status = 'completed'
+		  AND t.turn_number = 1
+		ORDER BY s.created_at DESC
+		LIMIT $3`
+
+	rows, err := r.pool.Query(ctx, query, userID, themeID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var topics []string
+	for rows.Next() {
+		var text string
+		if err := rows.Scan(&text); err != nil {
+			return nil, err
+		}
+		topics = append(topics, text)
+	}
+	return topics, rows.Err()
 }

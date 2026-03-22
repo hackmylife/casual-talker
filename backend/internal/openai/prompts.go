@@ -1,11 +1,71 @@
 package openai
 
 import (
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/naoki-watanabe/casual-talker/backend/internal/domain"
 )
+
+// personas for AI conversation variety — the AI picks a different identity each session.
+var personas = []struct {
+	Name        string
+	Personality string
+}{
+	{"Alex", "cheerful and enthusiastic, loves traveling"},
+	{"Mia", "calm and thoughtful, enjoys reading and cooking"},
+	{"Sam", "funny and casual, big sports fan"},
+	{"Yuki", "gentle and patient, interested in art and music"},
+	{"Leo", "energetic and curious, always asking follow-up questions"},
+	{"Emma", "warm and supportive, loves sharing personal stories"},
+}
+
+// scenariosByTheme maps theme titles to conversation scenario variations.
+// Each session randomly picks one scenario to keep conversations fresh.
+var scenariosByTheme = map[string][]string{
+	// English
+	"Greetings":         {"meeting at a coffee shop for the first time", "running into someone at a park", "starting a conversation at a party", "greeting a new neighbor"},
+	"Self Introduction": {"first day at a new class", "meeting at a language exchange event", "introducing yourself at a work meeting", "chatting on an online video call"},
+	"Family":            {"showing family photos to a friend", "talking about a family trip", "discussing family traditions", "comparing families with a friend"},
+	"Hobbies":           {"recommending hobbies to each other", "talking about a new hobby you started", "discussing weekend activities", "sharing a funny hobby story", "recomendando hobbies um ao outro", "falando sobre um novo hobby", "discutindo atividades de fim de semana", "compartilhando uma história engraçada"},
+	"Food":              {"ordering at a restaurant together", "cooking a meal with a friend", "trying street food at a festival", "sharing recipes from your country"},
+	"Weekend":           {"planning weekend activities together", "talking about last weekend's adventure", "comparing typical weekends", "suggesting fun weekend ideas"},
+	"Shopping":          {"shopping at a local market", "buying a birthday gift for a friend", "comparing prices online vs in-store", "looking for souvenirs while traveling", "fare shopping al mercato locale", "comprare un regalo di compleanno", "confrontare prezzi online e in negozio", "cercare souvenir in viaggio"},
+	"Weather":           {"deciding whether to go out based on weather", "talking about seasonal weather differences", "planning an outdoor event and checking weather", "comparing weather in different cities"},
+	// Italian
+	"Saluti":         {"incontro al bar per la prima volta", "incontro casuale al parco", "inizio conversazione a una festa", "saluto a un nuovo vicino"},
+	"Presentazione":  {"primo giorno in una nuova classe", "incontro a un evento di scambio linguistico", "presentazione in una riunione", "chiacchierata in videochiamata"},
+	"Famiglia":       {"mostrare foto di famiglia a un amico", "parlare di un viaggio in famiglia", "discutere tradizioni familiari", "confrontare famiglie con un amico"},
+	"Hobby":          {"consigliare hobby a vicenda", "parlare di un nuovo hobby", "discutere attività del fine settimana", "condividere una storia divertente"},
+	"Cibo":           {"ordinare al ristorante insieme", "cucinare con un amico", "provare cibo di strada a un festival", "condividere ricette del proprio paese"},
+	"Fine settimana": {"pianificare attività del weekend", "raccontare l'avventura dello scorso weekend", "confrontare weekend tipici", "suggerire idee divertenti"},
+	"Tempo":          {"decidere se uscire in base al meteo", "parlare delle differenze stagionali", "pianificare un evento all'aperto", "confrontare il tempo in diverse città"},
+	// Korean
+	"인사":     {"카페에서 처음 만나기", "공원에서 우연히 만나기", "파티에서 대화 시작하기", "새 이웃에게 인사하기"},
+	"자기소개": {"새 수업 첫날", "언어 교환 이벤트에서 만나기", "회의에서 자기소개", "온라인 영상통화에서 대화"},
+	"가족":     {"친구에게 가족 사진 보여주기", "가족 여행 이야기", "가족 전통 이야기", "친구와 가족 비교하기"},
+	"취미":     {"서로 취미 추천하기", "새로 시작한 취미 이야기", "주말 활동 이야기", "재미있는 취미 이야기 나누기"},
+	"음식":     {"식당에서 함께 주문하기", "친구와 요리하기", "축제에서 길거리 음식 먹기", "나라별 레시피 공유"},
+	"주말":     {"주말 계획 세우기", "지난 주말 이야기", "평소 주말 비교하기", "재미있는 주말 아이디어 제안"},
+	"쇼핑":     {"동네 시장에서 쇼핑", "친구 생일 선물 사기", "온라인과 오프라인 가격 비교", "여행 중 기념품 찾기"},
+	"날씨":     {"날씨 보고 외출 결정하기", "계절별 날씨 차이 이야기", "야외 이벤트 계획하기", "다른 도시 날씨 비교"},
+	// Portuguese
+	"Saudações":      {"encontro num café pela primeira vez", "encontro casual no parque", "início de conversa numa festa", "cumprimentar um novo vizinho"},
+	"Apresentação":   {"primeiro dia numa nova aula", "encontro num evento de intercâmbio", "apresentação numa reunião", "conversa por videochamada"},
+	"Família":        {"mostrando fotos da família para um amigo", "falando sobre viagem em família", "discutindo tradições familiares", "comparando famílias com um amigo"},
+	"Comida":         {"pedindo juntos num restaurante", "cozinhando com um amigo", "experimentando comida de rua num festival", "compartilhando receitas do seu país"},
+	"Fim de semana":  {"planejando atividades de fim de semana", "contando sobre a aventura do último fim de semana", "comparando fins de semana típicos", "sugerindo ideias divertidas"},
+	"Compras":        {"fazendo compras no mercado local", "comprando presente de aniversário", "comparando preços online e na loja", "procurando souvenirs viajando"},
+	"Clima":          {"decidindo se sai com base no clima", "falando sobre diferenças sazonais", "planejando evento ao ar livre", "comparando clima em cidades diferentes"},
+}
+
+// pickRandom returns a random element from a slice.
+func pickRandom[T any](items []T) T {
+	n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(items))))
+	return items[n.Int64()]
+}
 
 // languageConfig holds language-specific prompt fragments used across all
 // prompt builders.
@@ -149,14 +209,34 @@ func langConfig(targetLang string) languageConfig {
 
 // BuildSystemPrompt constructs the system prompt sent to the AI at the start
 // of every chat completion request. It injects the theme context, difficulty
-// level, turn progress, and the target language so the model adapts its
-// language accordingly.
-func BuildSystemPrompt(theme domain.Theme, level int, turnNumber, maxTurns int, targetLang string) string {
+// level, turn progress, target language, a random persona, and a random
+// conversation scenario to ensure variety across sessions on the same theme.
+// pastTopics lists summaries of previous sessions on the same theme so the AI
+// can steer the conversation toward unexplored areas.
+func BuildSystemPrompt(theme domain.Theme, level int, turnNumber, maxTurns int, targetLang string, pastTopics []string) string {
 	cfg := langConfig(targetLang)
 	targetPhrases := string(theme.TargetPhrases)
 
+	// Pick a random persona and scenario for this session.
+	persona := pickRandom(personas)
+	scenario := ""
+	if scenarios, ok := scenariosByTheme[theme.Title]; ok && len(scenarios) > 0 {
+		scenario = pickRandom(scenarios)
+	}
+
 	var sb strings.Builder
 	sb.WriteString(cfg.partnerIntro + "\n\n")
+
+	// Persona
+	sb.WriteString(fmt.Sprintf("Your name is %s. You are %s.\n", persona.Name, persona.Personality))
+	sb.WriteString("Introduce yourself naturally when the conversation starts.\n\n")
+
+	// Scenario
+	if scenario != "" {
+		sb.WriteString(fmt.Sprintf("Conversation scenario: %s\n", scenario))
+		sb.WriteString("Use this scenario to guide the conversation naturally. Ask questions related to this situation.\n\n")
+	}
+
 	sb.WriteString("Rules:\n")
 	sb.WriteString("- Always speak first in each turn\n")
 	sb.WriteString(fmt.Sprintf("- %s\n", fmt.Sprintf(cfg.levelInstruction, level)))
@@ -165,9 +245,20 @@ func BuildSystemPrompt(theme domain.Theme, level int, turnNumber, maxTurns int, 
 	sb.WriteString(fmt.Sprintf("- Target phrases: %s\n", targetPhrases))
 	sb.WriteString("- If the user struggles, simplify your language\n")
 	sb.WriteString("- Never correct grammar directly during conversation\n")
-	sb.WriteString("- Be encouraging and patient\n\n")
+	sb.WriteString("- Be encouraging and patient\n")
+	sb.WriteString("- Ask varied and creative questions — do NOT repeat the same questions across sessions\n")
+	sb.WriteString("- Share your own opinions and experiences to make the conversation feel natural\n\n")
 
 	sb.WriteString(cfg.levelGuidelines + "\n\n")
+
+	// Past session context to avoid repetition
+	if len(pastTopics) > 0 {
+		sb.WriteString("The student has practiced this theme before. Topics already covered:\n")
+		for _, topic := range pastTopics {
+			sb.WriteString(fmt.Sprintf("- %s\n", topic))
+		}
+		sb.WriteString("Please explore DIFFERENT aspects of the topic this time. Ask new questions and take the conversation in a fresh direction.\n\n")
+	}
 
 	sb.WriteString(fmt.Sprintf("Turn: %d of %d\n", turnNumber, maxTurns))
 	sb.WriteString("When turn reaches maxTurns, wrap up the conversation naturally.")

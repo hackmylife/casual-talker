@@ -129,7 +129,10 @@ func (h *ChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	if req.InterpretedText != "" && req.InterpretedText != req.Message {
 		userMsgForAI = req.InterpretedText
 	}
-	systemPrompt := oai.BuildSystemPrompt(*theme, session.Difficulty, currentTurn, session.MaxTurns, targetLang)
+	// Fetch summaries of past sessions on the same theme to avoid repetitive
+	// conversation starters.
+	pastTopics, _ := h.sessionRepo.GetPastSessionTopics(r.Context(), userID, session.ThemeID, 5)
+	systemPrompt := oai.BuildSystemPrompt(*theme, session.Difficulty, currentTurn, session.MaxTurns, targetLang, pastTopics)
 	messages := buildChatMessages(systemPrompt, turns, userMsgForAI)
 
 	// Configure SSE headers. The X-Accel-Buffering header disables nginx
