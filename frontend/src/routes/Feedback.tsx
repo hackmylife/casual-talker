@@ -445,24 +445,36 @@ export default function Feedback() {
               <div className="mt-3 space-y-2">
                 {turns.map((turn) => (
                   <div key={turn.id}>
-                    {/* AI message */}
-                    <div className="flex gap-2 mb-1">
-                      <span className="text-xs font-medium text-neutral-400 mt-0.5 flex-shrink-0 w-6">AI</span>
-                      <p className="text-sm text-neutral-800 bg-neutral-50 rounded-xl px-3 py-2 flex-1">
-                        {turn.ai_text}
-                      </p>
-                    </div>
-                    {/* User message */}
-                    {turn.user_text && (
-                      <div className="flex gap-2 justify-end">
-                        <div className="text-sm bg-primary-500 text-white rounded-xl px-3 py-2 max-w-[80%]">
-                          <p>{turn.user_text}</p>
-                          {turn.interpreted_text && turn.interpreted_text !== turn.user_text && (
-                            <p className="text-xs text-white/60 italic mt-0.5">
-                              {turn.interpreted_text}
-                            </p>
-                          )}
+                    {/* Turn 1 (AI initial greeting): show AI first, no user */}
+                    {/* Turn 2+: user spoke first, then AI responded */}
+                    {turn.user_text ? (
+                      <>
+                        {/* User message (came first in real conversation) */}
+                        <div className="flex gap-2 justify-end mb-1">
+                          <div className="text-sm bg-primary-500 text-white rounded-xl px-3 py-2 max-w-[80%]">
+                            <p>{turn.user_text}</p>
+                            {turn.interpreted_text && turn.interpreted_text !== turn.user_text && (
+                              <p className="text-xs text-white/60 italic mt-0.5">
+                                {turn.interpreted_text}
+                              </p>
+                            )}
+                          </div>
                         </div>
+                        {/* AI response */}
+                        <div className="flex gap-2 mb-1">
+                          <span className="text-xs font-medium text-neutral-400 mt-0.5 flex-shrink-0 w-6">AI</span>
+                          <p className="text-sm text-neutral-800 bg-neutral-50 rounded-xl px-3 py-2 flex-1">
+                            {turn.ai_text}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      /* AI-only turn (initial greeting) */
+                      <div className="flex gap-2 mb-1">
+                        <span className="text-xs font-medium text-neutral-400 mt-0.5 flex-shrink-0 w-6">AI</span>
+                        <p className="text-sm text-neutral-800 bg-neutral-50 rounded-xl px-3 py-2 flex-1">
+                          {turn.ai_text}
+                        </p>
                       </div>
                     )}
                   </div>

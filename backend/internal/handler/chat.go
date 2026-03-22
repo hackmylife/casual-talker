@@ -135,6 +135,15 @@ func (h *ChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	systemPrompt := oai.BuildSystemPrompt(*theme, session.Difficulty, currentTurn, session.MaxTurns, targetLang, pastTopics)
 	messages := buildChatMessages(systemPrompt, turns, userMsgForAI)
 
+	// Log the message list for debugging conversation coherence.
+	for i, m := range messages {
+		if m.Role == "system" {
+			slog.Debug("chat msg", "i", i, "role", m.Role, "len", len(m.Content))
+		} else {
+			slog.Debug("chat msg", "i", i, "role", m.Role, "content", m.Content)
+		}
+	}
+
 	// Configure SSE headers. The X-Accel-Buffering header disables nginx
 	// proxy buffering so chunks reach the client immediately.
 	w.Header().Set("Content-Type", "text/event-stream")
