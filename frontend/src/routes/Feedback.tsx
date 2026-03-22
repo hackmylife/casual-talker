@@ -371,7 +371,7 @@ export default function Feedback() {
         {/* Improvements section */}
         {improvements.length > 0 && (
           <section className="bg-white rounded-2xl p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-neutral-900 mb-3">📝 改善ポイント</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 mb-3">📝 ネイティブはこうする</h2>
             <ul className="space-y-2">
               {improvements.map((item, index) => {
                 const point = typeof item === 'string' ? item : item.point
