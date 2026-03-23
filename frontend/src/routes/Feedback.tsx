@@ -4,6 +4,7 @@ import { Check, Lightbulb, Bookmark, Volume2 } from 'lucide-react'
 import { api } from '@/lib/api-client'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ExpressionCard } from '@/components/feedback/ExpressionCard'
+import { levelBadgeClass } from '@/lib/level-utils'
 
 // Shape returned by GET /api/v1/sessions/:id/feedback
 interface NaturalExpression {
@@ -80,18 +81,6 @@ function parseNaturalExpressions(
     }
     return []
   })
-}
-
-// Level badge colors per level number (1-5)
-function levelColor(level: number): string {
-  switch (level) {
-    case 1: return 'bg-neutral-100 text-neutral-700'
-    case 2: return 'bg-blue-50 text-blue-700'
-    case 3: return 'bg-green-50 text-green-700'
-    case 4: return 'bg-purple-50 text-purple-700'
-    case 5: return 'bg-amber-50 text-amber-700'
-    default: return 'bg-neutral-100 text-neutral-700'
-  }
 }
 
 interface LocationState {
@@ -271,7 +260,7 @@ export default function Feedback() {
             </h2>
             <div className="flex items-center gap-3 mb-2">
               <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${levelColor(currentLevel.level)}`}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${levelBadgeClass(currentLevel.level)}`}
               >
                 Lv{currentLevel.level}　{currentLevel.label}
               </span>

@@ -109,10 +109,8 @@ func generateFeedback(
 	targetLang := "en"
 	session, err := sessionRepo.GetSession(ctx, sessionID)
 	if err == nil {
-		if theme, err := sessionRepo.GetTheme(ctx, session.ThemeID); err == nil {
-			if course, err := sessionRepo.GetCourse(ctx, theme.CourseID); err == nil {
-				targetLang = course.TargetLanguage
-			}
+		if lang, lErr := resolveTargetLanguage(ctx, sessionRepo, session.ThemeID); lErr == nil {
+			targetLang = lang
 		}
 	}
 

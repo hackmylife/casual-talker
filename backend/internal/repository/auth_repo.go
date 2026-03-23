@@ -31,6 +31,10 @@ type AuthRepository interface {
 	GetUserLevel(ctx context.Context, userID, language string) (int, error)
 	// SetUserLevel upserts the user's level for the given target language.
 	SetUserLevel(ctx context.Context, userID, language string, level int) error
+	// GetUserLevels returns all language levels for the given user as a map
+	// from language code to level. Languages with no record are absent from the
+	// map; callers should default to 1 when a key is missing.
+	GetUserLevels(ctx context.Context, userID string) (map[string]int, error)
 }
 
 // PgxAuthRepository is a pgx-backed implementation of AuthRepository.
@@ -228,4 +232,27 @@ func (r *PgxAuthRepository) SetUserLevel(ctx context.Context, userID, language s
 
 	_, err := r.pool.Exec(ctx, q, userID, language, level)
 	return err
+}
+
+// GetUserLevels fetches all language levels for the given user in a single
+// query, returning a map from language code to level. This avoids the N+1
+// pattern of calling GetUserLevel once per language in the Stats handler.
+func (r *PgxAuthRepository) GetUserLevels(ctx context.Context, userID string) (map[string]int, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT language, level FROM user_levels WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	levels := make(map[string]int)
+	for rows.Next() {
+		var lang string
+		var level int
+		if err := rows.Scan(&lang, &level); err != nil {
+			return nil, err
+		}
+		levels[lang] = level
+	}
+	return levels, rows.Err()
 }

@@ -285,12 +285,7 @@ func (h *SessionHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// language-specific level can be looked up from user_levels.
 	userLevel := 1
 	if h.authRepo != nil {
-		targetLang := ""
-		if theme, err := h.repo.GetTheme(r.Context(), req.ThemeID); err == nil {
-			if course, err := h.repo.GetCourse(r.Context(), theme.CourseID); err == nil {
-				targetLang = course.TargetLanguage
-			}
-		}
+		targetLang, _ := resolveTargetLanguage(r.Context(), h.repo, req.ThemeID)
 		if targetLang != "" {
 			if lvl, err := h.authRepo.GetUserLevel(r.Context(), userID, targetLang); err == nil {
 				userLevel = lvl
@@ -423,6 +418,11 @@ func (h *SessionHandler) Complete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve the target language once here so it can be reused for both
+	// feedback generation (inside generateFeedback) and the level-update step
+	// below without a second theme→course round-trip.
+	targetLang, _ := resolveTargetLanguage(r.Context(), h.repo, updated.ThemeID)
+
 	resp := completeSessionResponse{Session: toSessionResponse(*updated)}
 
 	// Generate feedback synchronously. A failure here is non-fatal: the
@@ -439,19 +439,10 @@ func (h *SessionHandler) Complete(w http.ResponseWriter, r *http.Request) {
 			resp.Feedback = &fbResp
 
 			// Update the language-specific user level based on feedback assessment.
-			// Resolve the target language from session → theme → course.
 			var assessedLevel struct {
 				Level int `json:"level"`
 			}
 			if err := json.Unmarshal(fb.CurrentLevel, &assessedLevel); err == nil && assessedLevel.Level > 0 {
-				// Determine target language for this session.
-				targetLang := ""
-				if theme, thErr := h.repo.GetTheme(r.Context(), updated.ThemeID); thErr == nil {
-					if course, cErr := h.repo.GetCourse(r.Context(), theme.CourseID); cErr == nil {
-						targetLang = course.TargetLanguage
-					}
-				}
-
 				if targetLang != "" {
 					prevLevel, _ := h.authRepo.GetUserLevel(r.Context(), userID, targetLang)
 					if prevLevel != assessedLevel.Level {
@@ -621,15 +612,23 @@ func (h *SessionHandler) Stats(w http.ResponseWriter, r *http.Request) {
 
 	streak := calculateStreak(sessionDates)
 
-	// Build the languages map, enriching each entry with the user's level for
-	// that language fetched from the user_levels table.
+	// Fetch all language levels in one query to avoid an N+1 loop.
+	var userLevels map[string]int
+	if h.authRepo != nil {
+		userLevels, _ = h.authRepo.GetUserLevels(ctx, userID)
+	}
+
+	// Build the languages map, enriching each entry with the stored level.
 	languages := make(map[string]languageStats, len(langStats))
 	for _, ls := range langStats {
 		level := ls.Level
-		if h.authRepo != nil && level == 0 {
-			if lvl, err := h.authRepo.GetUserLevel(ctx, userID, ls.Language); err == nil {
+		if level == 0 {
+			if lvl, ok := userLevels[ls.Language]; ok {
 				level = lvl
 			}
+		}
+		if level == 0 {
+			level = 1
 		}
 		languages[ls.Language] = languageStats{
 			Sessions:      ls.Sessions,

@@ -99,6 +99,16 @@ type languageConfig struct {
 	hintLevelDesc string
 }
 
+// defaultLevelLabels are the Japanese labels for feedback level 1-5, shared
+// across all language configurations.
+var defaultLevelLabels = [5]string{
+	"単語・超短文レベル",
+	"基本文レベル",
+	"理由追加レベル",
+	"複数文レベル",
+	"自発展開レベル",
+}
+
 // languageConfigs holds configurations for each supported target language.
 var languageConfigs = map[string]languageConfig{
 	"en": {
@@ -118,13 +128,7 @@ var languageConfigs = map[string]languageConfig{
 - Added vowels: "desuku" → "desk"`,
 		interpretOutputLang:       "English",
 		feedbackConversationLabel: "English conversation",
-		feedbackLevelLabels: [5]string{
-			"単語・超短文レベル",
-			"基本文レベル",
-			"理由追加レベル",
-			"複数文レベル",
-			"自発展開レベル",
-		},
+		feedbackLevelLabels: defaultLevelLabels,
 		hintLevelDesc: "Japanese English learner",
 	},
 	"it": {
@@ -144,13 +148,7 @@ var languageConfigs = map[string]languageConfig{
 - GN sounds: "lasana" → "lasagna"`,
 		interpretOutputLang:       "Italian",
 		feedbackConversationLabel: "Italian conversation",
-		feedbackLevelLabels: [5]string{
-			"単語・超短文レベル",
-			"基本文レベル",
-			"理由追加レベル",
-			"複数文レベル",
-			"自発展開レベル",
-		},
+		feedbackLevelLabels: defaultLevelLabels,
 		hintLevelDesc: "Japanese Italian learner",
 	},
 	"ko": {
@@ -170,13 +168,7 @@ var languageConfigs = map[string]languageConfig{
 - Long vowels and short vowels treated equally`,
 		interpretOutputLang:       "Korean",
 		feedbackConversationLabel: "Korean conversation",
-		feedbackLevelLabels: [5]string{
-			"単語・超短文レベル",
-			"基本文レベル",
-			"理由追加レベル",
-			"複数文レベル",
-			"自発展開レベル",
-		},
+		feedbackLevelLabels: defaultLevelLabels,
 		hintLevelDesc: "Japanese Korean learner",
 	},
 	"pt": {
@@ -196,13 +188,7 @@ var languageConfigs = map[string]languageConfig{
 - Final -m nasalizing the vowel: "bem" → "be"`,
 		interpretOutputLang:       "Portuguese",
 		feedbackConversationLabel: "Portuguese conversation",
-		feedbackLevelLabels: [5]string{
-			"単語・超短文レベル",
-			"基本文レベル",
-			"理由追加レベル",
-			"複数文レベル",
-			"自発展開レベル",
-		},
+		feedbackLevelLabels: defaultLevelLabels,
 		hintLevelDesc: "Japanese Portuguese learner",
 	},
 	"ja": {
@@ -224,13 +210,7 @@ var languageConfigs = map[string]languageConfig{
 - ず/づ and じ/ぢ confusion`,
 		interpretOutputLang:       "Japanese",
 		feedbackConversationLabel: "Japanese conversation",
-		feedbackLevelLabels: [5]string{
-			"単語・超短文レベル",
-			"基本文レベル",
-			"理由追加レベル",
-			"複数文レベル",
-			"自発展開レベル",
-		},
+		feedbackLevelLabels: defaultLevelLabels,
 		hintLevelDesc: "Japanese language learner",
 	},
 }

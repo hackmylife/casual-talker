@@ -98,20 +98,19 @@ func (h *ChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load theme for prompt construction.
+	// Load theme for prompt construction and resolve the target language via
+	// the parent course. Both objects are needed: theme for BuildSystemPrompt,
+	// course for the TargetLanguage value.
 	theme, err := h.sessionRepo.GetTheme(r.Context(), session.ThemeID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
-
-	// Load the parent course to determine the target language.
-	course, err := h.sessionRepo.GetCourse(r.Context(), theme.CourseID)
+	targetLang, err := resolveTargetLanguage(r.Context(), h.sessionRepo, session.ThemeID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
-	targetLang := course.TargetLanguage
 
 	// Determine the current turn number from existing turns.
 	turns, err := h.sessionRepo.ListTurnsBySession(r.Context(), session.ID)
@@ -136,11 +135,15 @@ func (h *ChatHandler) Stream(w http.ResponseWriter, r *http.Request) {
 	messages := buildChatMessages(systemPrompt, turns, userMsgForAI)
 
 	// Log the message list for debugging conversation coherence.
-	for i, m := range messages {
-		if m.Role == "system" {
-			slog.Debug("chat msg", "i", i, "role", m.Role, "len", len(m.Content))
-		} else {
-			slog.Debug("chat msg", "i", i, "role", m.Role, "content", m.Content)
+	// Guard with an enabled check so the loop body is skipped entirely when
+	// debug logging is off, avoiding unnecessary allocations.
+	if slog.Default().Enabled(r.Context(), slog.LevelDebug) {
+		for i, m := range messages {
+			if m.Role == "system" {
+				slog.Debug("chat msg", "i", i, "role", m.Role, "len", len(m.Content))
+			} else {
+				slog.Debug("chat msg", "i", i, "role", m.Role, "content", m.Content)
+			}
 		}
 	}
 
@@ -265,10 +268,8 @@ func (h *ChatHandler) Interpret(w http.ResponseWriter, r *http.Request) {
 
 	// Resolve target language from theme → course.
 	interpretLang := "en"
-	if theme, err := h.sessionRepo.GetTheme(r.Context(), session.ThemeID); err == nil {
-		if course, err := h.sessionRepo.GetCourse(r.Context(), theme.CourseID); err == nil {
-			interpretLang = course.TargetLanguage
-		}
+	if lang, err := resolveTargetLanguage(r.Context(), h.sessionRepo, session.ThemeID); err == nil {
+		interpretLang = lang
 	}
 
 	prompt := oai.BuildInterpretPrompt(req.RawText, interpretLang)
@@ -368,10 +369,8 @@ func (h *ChatHandler) Hint(w http.ResponseWriter, r *http.Request) {
 
 	// Resolve target language from theme → course.
 	hintLang := "en"
-	if theme, err := h.sessionRepo.GetTheme(r.Context(), session.ThemeID); err == nil {
-		if course, err := h.sessionRepo.GetCourse(r.Context(), theme.CourseID); err == nil {
-			hintLang = course.TargetLanguage
-		}
+	if lang, err := resolveTargetLanguage(r.Context(), h.sessionRepo, session.ThemeID); err == nil {
+		hintLang = lang
 	}
 
 	// Ask the model for a structured hint.
