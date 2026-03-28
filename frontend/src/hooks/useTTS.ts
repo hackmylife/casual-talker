@@ -8,19 +8,33 @@ export interface UseTTSReturn {
   stop: () => void
 }
 
+// A single shared Audio element reused across all TTS playback.
+// iOS Safari blocks audio.play() on newly created Audio elements unless
+// triggered by a direct user gesture. By reusing one element that was
+// "unlocked" during the first user-initiated play, subsequent calls
+// (e.g. after an SSE stream completes) can play without gesture.
+let sharedAudio: HTMLAudioElement | null = null
+
+function getSharedAudio(): HTMLAudioElement {
+  if (!sharedAudio) {
+    sharedAudio = new Audio()
+  }
+  return sharedAudio
+}
+
 export function useTTS(): UseTTSReturn {
   const [isPlaying, setIsPlaying] = useState(false)
-
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const blobUrlRef = useRef<string | null>(null)
+  const resolveRef = useRef<(() => void) | null>(null)
+  const rejectRef = useRef<((err: Error) => void) | null>(null)
 
-  // Clean up audio resources when the component unmounts
+  // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
+      const audio = getSharedAudio()
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current)
         blobUrlRef.current = null
@@ -29,20 +43,25 @@ export function useTTS(): UseTTSReturn {
   }, [])
 
   const stop = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-    }
+    const audio = getSharedAudio()
+    audio.pause()
+    audio.removeAttribute('src')
+    audio.load()
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current)
       blobUrlRef.current = null
     }
     setIsPlaying(false)
+    // Resolve any pending promise so callers don't hang
+    if (resolveRef.current) {
+      resolveRef.current()
+      resolveRef.current = null
+      rejectRef.current = null
+    }
   }, [])
 
   const play = useCallback(
     async (text: string): Promise<void> => {
-      // Stop any currently playing audio before starting a new one
       stop()
 
       const token = localStorage.getItem('access_token')
@@ -65,32 +84,50 @@ export function useTTS(): UseTTSReturn {
 
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
+
+      // Revoke the previous blob URL if any
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current)
+      }
       blobUrlRef.current = url
 
-      return new Promise<void>((resolve, reject) => {
-        const audio = new Audio(url)
-        audioRef.current = audio
+      const audio = getSharedAudio()
 
-        setIsPlaying(true)
+      return new Promise<void>((resolve, reject) => {
+        resolveRef.current = resolve
+        rejectRef.current = reject
 
         audio.onended = () => {
-          URL.revokeObjectURL(url)
-          blobUrlRef.current = null
-          audioRef.current = null
+          if (blobUrlRef.current) {
+            URL.revokeObjectURL(blobUrlRef.current)
+            blobUrlRef.current = null
+          }
           setIsPlaying(false)
+          resolveRef.current = null
+          rejectRef.current = null
           resolve()
         }
 
         audio.onerror = () => {
-          URL.revokeObjectURL(url)
-          blobUrlRef.current = null
-          audioRef.current = null
+          if (blobUrlRef.current) {
+            URL.revokeObjectURL(blobUrlRef.current)
+            blobUrlRef.current = null
+          }
           setIsPlaying(false)
+          resolveRef.current = null
+          rejectRef.current = null
           reject(new Error('Audio playback failed'))
         }
 
+        // Set src and play — reusing the same element preserves the
+        // iOS "user gesture unlock" from previous interactions.
+        audio.src = url
+        setIsPlaying(true)
+
         audio.play().catch((err) => {
           setIsPlaying(false)
+          resolveRef.current = null
+          rejectRef.current = null
           reject(err)
         })
       })
