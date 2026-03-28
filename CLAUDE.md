@@ -12,14 +12,14 @@ English conversation training web app for Japanese beginners. AI-powered speakin
 - Static build served by Go backend (same origin, no CORS)
 
 ### Backend (backend/)
-- Go 1.23+ / Chi v5 (HTTP router)
+- Go 1.25+ / Chi v5 (HTTP router)
 - pgx v5 (PostgreSQL driver, direct queries — sqlc is configured but repository layer uses pgx directly)
 - goose (migrations)
 - sashabaranov/go-openai (GPT-4o-mini, Whisper, TTS)
 - Self-managed auth: bcrypt (cost=12) + JWT HS256 + email whitelist
 
 ### Infrastructure
-- Single Rocky Linux rental server: nginx (TLS) + Go binary + PostgreSQL 16
+- Single Rocky Linux rental server: nginx (TLS) + Go binary + PostgreSQL 17
 - Deploy: GitHub Actions → rsync/scp (planned)
 
 ## Implemented Features (as of 2026-03)
@@ -148,7 +148,7 @@ npm run build     # Production build to dist/
 ```
 
 ### Local Setup
-1. PostgreSQL running locally (`brew services start postgresql@16`)
+1. PostgreSQL running locally (`brew services start postgresql@17`)
 2. Create DB: `createdb casualtalker_dev`
 3. Configure: `cd backend && cp deploy/config.env.example config.env` (edit values)
 4. Migrate: `make migrate-up`

@@ -65,7 +65,7 @@
 
 | カテゴリ | 技術 |
 |---|---|
-| 言語 | Go 1.23+ |
+| 言語 | Go 1.25+ |
 | HTTPルーター | Chi v5 |
 | DBドライバー | pgx v5（直接クエリ） |
 | マイグレーション | goose |
@@ -76,7 +76,7 @@
 
 | カテゴリ | 技術 |
 |---|---|
-| DB | PostgreSQL 16 |
+| DB | PostgreSQL 17 |
 | AI会話 | OpenAI GPT-4o-mini |
 | 音声認識 | OpenAI Whisper API |
 | 音声合成 | OpenAI TTS API |
@@ -89,9 +89,9 @@
 
 ### 前提条件
 
-- Go 1.23+
-- Node.js 20+
-- PostgreSQL 16+
+- Go 1.25+
+- Node.js 22+
+- PostgreSQL 17+
 - goose（`go install github.com/pressly/goose/v3/cmd/goose@latest`）
 - OpenAI APIキー
 
@@ -264,7 +264,7 @@ nginx（TLS終端 / Let's Encrypt）
   ↓ proxy_pass
 Go バイナリ（:8080）
   ↓
-PostgreSQL 16（localhost:5432）
+PostgreSQL 17（localhost:5432）
 ```
 
 ### デプロイ手順概要
