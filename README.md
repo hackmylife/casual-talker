@@ -80,7 +80,7 @@
 | AI会話 | OpenAI GPT-4o-mini |
 | 音声認識 | OpenAI Whisper API |
 | 音声合成 | OpenAI TTS API |
-| サーバー | FreeBSDレンタルサーバー（nginx + Goバイナリ） |
+| サーバー | Rocky Linuxレンタルサーバー（nginx + Goバイナリ） |
 | デプロイ | GitHub Actions → rsync/scp（予定） |
 
 ---
@@ -160,7 +160,7 @@ openssl rand -base64 32
 cd backend
 
 make dev          # 開発サーバー起動（go run）
-make build        # FreeBSD向けクロスコンパイル
+make build        # Rocky Linux向けクロスコンパイル
 make migrate-up   # DBマイグレーション適用
 make migrate-down # DBマイグレーション1件ロールバック
 make sqlc         # SQLクエリからGoコード生成
@@ -255,7 +255,7 @@ casual-talker/
 
 ---
 
-## デプロイ（FreeBSD向け概要）
+## デプロイ（Rocky Linux向け概要）
 
 ### サーバー構成
 
@@ -272,7 +272,7 @@ PostgreSQL 16（localhost:5432）
 ```sh
 # 1. バイナリのクロスコンパイル
 cd backend && make build
-# → casual-talker（FreeBSD amd64バイナリ）が生成される
+# → casual-talker（Rocky Linux amd64バイナリ）が生成される
 
 # 2. フロントエンドのビルド
 cd frontend && npm run build
@@ -290,7 +290,7 @@ ssh user@server "goose -dir /usr/local/www/casual-talker/migrations postgres '..
 ssh user@server "service casualtalker restart"
 ```
 
-プロセス管理は FreeBSD rc.d を使用。設定テンプレートは `backend/deploy/` を参照してください。
+プロセス管理は systemd を使用。unit ファイルは `backend/deploy/casual-talker.service` を参照してください。
 
 ---
 

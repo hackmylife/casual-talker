@@ -1,0 +1,25 @@
+[Unit]
+Description=Casual Talker - AI Conversation Trainer
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/casual-talker
+EnvironmentFile=/opt/casual-talker/config.env
+ExecStart=/opt/casual-talker/casual-talker
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/casual-talker/static
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

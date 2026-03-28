@@ -11,7 +11,7 @@ MIGRATIONS_DIR := db/migrations
 export
 
 build:
-	GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build -o $(BINARY) ./cmd/server/
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(BINARY) ./cmd/server/
 
 dev:
 	go run ./cmd/server/

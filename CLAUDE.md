@@ -19,7 +19,7 @@ English conversation training web app for Japanese beginners. AI-powered speakin
 - Self-managed auth: bcrypt (cost=12) + JWT HS256 + email whitelist
 
 ### Infrastructure
-- Single FreeBSD rental server: nginx (TLS) + Go binary + PostgreSQL 16
+- Single Rocky Linux rental server: nginx (TLS) + Go binary + PostgreSQL 16
 - Deploy: GitHub Actions → rsync/scp (planned)
 
 ## Implemented Features (as of 2026-03)
@@ -135,7 +135,7 @@ make migrate-up   # Run DB migrations (001–007)
 make dev          # Run server (go run ./cmd/server/)
 make sqlc         # Regenerate DB code from SQL queries
 make test         # Run tests
-make build        # Cross-compile for FreeBSD amd64
+make build        # Cross-compile for Linux amd64
 make lint         # golangci-lint
 ```
 
