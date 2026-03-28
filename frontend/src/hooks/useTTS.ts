@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 
+const API_BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
+
 export interface UseTTSReturn {
   isPlaying: boolean
   play: (text: string) => Promise<void>
@@ -51,7 +53,7 @@ export function useTTS(): UseTTSReturn {
         headers['Authorization'] = `Bearer ${token}`
       }
 
-      const res = await fetch('/api/v1/speech/tts', {
+      const res = await fetch(`${API_BASE}/api/v1/speech/tts`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ text, speed: 1.0 }),

@@ -1,3 +1,8 @@
+// Base path for API requests. In production behind a sub-path reverse proxy
+// (e.g. /talk/), Vite's import.meta.env.BASE_URL provides the prefix.
+// In dev mode with the Vite proxy, BASE_URL is "/" so paths stay relative.
+const API_BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
+
 class ApiError extends Error {
   status: number
   data: unknown
@@ -27,7 +32,7 @@ async function apiFetch<T>(
     defaultHeaders['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       ...defaultHeaders,
@@ -43,7 +48,7 @@ async function apiFetch<T>(
       return apiFetch<T>(path, options, false)
     }
     // No valid session — redirect to login.
-    window.location.href = '/login'
+    window.location.href = `${API_BASE}/login`
     throw new ApiError(401, 'Unauthorized')
   }
 
@@ -67,7 +72,7 @@ async function apiFetchBlob(path: string, options: RequestInit = {}): Promise<Bl
     defaultHeaders['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       ...defaultHeaders,
@@ -80,7 +85,7 @@ async function apiFetchBlob(path: string, options: RequestInit = {}): Promise<Bl
     if (refreshed) {
       return apiFetchBlob(path, options)
     }
-    window.location.href = '/login'
+    window.location.href = `${API_BASE}/login`
     throw new ApiError(401, 'Unauthorized')
   }
 
@@ -96,7 +101,7 @@ async function tryRefreshToken(): Promise<boolean> {
   if (!refreshToken) return false
 
   try {
-    const res = await fetch('/api/v1/auth/refresh', {
+    const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),

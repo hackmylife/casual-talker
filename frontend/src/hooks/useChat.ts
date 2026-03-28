@@ -1,5 +1,7 @@
 import { useState, useCallback, type Dispatch, type SetStateAction } from 'react'
 
+const API_BASE = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '')
+
 export interface Message {
   role: 'ai' | 'user'
   text: string
@@ -58,7 +60,7 @@ export function useChat(): UseChatReturn {
       let fullResponse = ''
 
       try {
-        const res = await fetch('/api/v1/chat/stream', {
+        const res = await fetch(`${API_BASE}/api/v1/chat/stream`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
